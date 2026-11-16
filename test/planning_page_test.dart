@@ -40,13 +40,12 @@ void main() {
       final store = MemoryWeekStore();
       await tester.pumpWidget(app(store));
       await tester.pumpAndSettle();
-      await reveal(
-        tester,
-        find.widgetWithText(FilledButton, 'Wochenplan').first,
-      );
+      await reveal(tester, find.text('Mehr'));
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Wochenplan').first);
+      await tester.tap(find.text('Mehr'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Zum Wochenplan hinzufügen'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Montag'));
       await tester.pumpAndSettle();

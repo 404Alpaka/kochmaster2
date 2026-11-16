@@ -3,3 +3,4 @@ void writeSession(String key, String? session) {}
 
 String? authCallbackCode() => null;
 void clearAuthCallback() {}
+String? authRedirectUrl() => null;

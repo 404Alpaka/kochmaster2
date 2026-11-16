@@ -22,6 +22,8 @@ class WeeklyPlan {
           'recipe_id': entry.value.recipe.id,
           'recipe': recipeSnapshot(entry.value.recipe),
           'servings': entry.value.servings,
+          'prepared_meal_id': entry.value.preparedMealId,
+          'prepared_consumed': entry.value.preparedConsumed,
         },
     ],
     'checked': [
@@ -43,7 +45,9 @@ class WeeklyPlan {
       if (day < 0 || day > 6 || plan.meals.containsKey(day)) {
         throw const FormatException('Ungültiger Wochentag');
       }
-      plan.meals[day] = PlannedMeal(recipe, row['servings'] as int);
+      plan.meals[day] = PlannedMeal(recipe, row['servings'] as int,
+        preparedMealId: row['prepared_meal_id'] as String?,
+        preparedConsumed: row['prepared_consumed'] == true);
     }
     for (final value in data['checked'] as List) {
       final row = value as Map<String, dynamic>;

@@ -20,6 +20,17 @@ import '../../recipes/domain/recipe.dart';
 import '../../shopping/domain/build_shopping_list.dart';
 
 part 'mise_views.dart';
+part 'planning_survey.dart';
+part 'planning_budget_demo.dart';
+part 'planning_proposal.dart';
+part 'shopping_views.dart';
+part 'pantry_views.dart';
+part 'household_views.dart';
+part 'household_rules.dart';
+part 'cooking_views.dart';
+part 'prepared_meal_views.dart';
+part 'recipe_collection_views.dart';
+part 'weekly_review_views.dart';
 
 class PlanningPage extends StatefulWidget {
   const PlanningPage({
@@ -42,7 +53,17 @@ class PlanningPage extends StatefulWidget {
 class _PlanningPageState extends State<PlanningPage> {
   List<Recipe>? refreshedCatalog;
   bool admin = false;
-  List<Recipe> get recipes => refreshedCatalog ?? widget.recipes;
+  List<Recipe> get recipes => [...(refreshedCatalog ?? widget.recipes), ...personalRecipes.map((r) => recipeFromSnapshot(Map<String, dynamic>.from(r['recipe'] as Map)))];
+  final personalRecipes = <Map<String, dynamic>>[];
+  int collectionPage = 0;
+  final collectionFilters = <String>{};
+  String collectionQuery = '';
+  Map<String, dynamic> personalRecipeDraft = {};
+  String? personalRecipeError;
+  String recipeImportText = '';
+  String recipeImportSource = '';
+  bool recipeImportLinkMode = false;
+  bool importedPreview = false;
   final plan = <int, PlannedMeal>{};
   final checked = <(String, String)>{};
   static const days = [
@@ -54,15 +75,64 @@ class _PlanningPageState extends State<PlanningPage> {
     'Samstag',
     'Sonntag',
   ];
+  int cookingPage = 0;
+  Recipe? cookingRecipe;
+  int cookingPortions = 2;
+  int cookingStep = 0;
+  int? cookingDay;
+  DateTime? cookingDate;
+  String cookingKey = '';
+  Timer? cookingTicker;
+  final cookingTimers = <int, _CookingTimer>{};
+  final cookingUses = <_CookingUse>[];
+  bool deductCookingStock = true;
+  int remainingCookedPortions = 0;
+  String cookedStorage = 'Kühlschrank';
+  DateTime? cookedOn;
+  final cookedEntries = <String>{};
+  final preparedMeals = <Map<String, dynamic>>[];
   int tab = 0;
+  int shoppingPage = 0;
+  int selectedMarket = 0;
+  bool showAllDemoProducts = false;
+  bool includeOatDrink = true;
+  String deliveryAddress = 'Zuhause · 10115 Berlin';
+  String deliverySlot = 'Morgen · 18–20 Uhr';
   int servings = 2;
+  int surveyStep = 0;
+  bool surveyCompleted = false;
+  final exclusions = <String>{};
+  String diet = 'Ohne Einschränkung';
+  int planningDays = 7;
+  int maxMinutes = 30;
+  int startDay = 0;
+  Map<int, PlannedMeal>? draft;
+  final acceptedDays = <int>{};
+  bool proposalConfirmed = false;
+  bool editingPlan = false;
+  int? swappingDay;
+  Recipe? selectedReplacement;
+  final changedProposalDays = <int>{};
 
   String query = '';
   int recipeFilter = 0;
+  final rememberedRecipes = <String>{};
+  final favoriteRecipes = <String>{};
+  final hiddenRecipes = <String>{};
   int selectedDay = DateTime.now().weekday - 1;
   int saying = 0;
   Timer? sayingTimer;
   double budget = 75;
+  double? planBudget;
+  bool planBudgetInitialized = false;
+  final budgetDemoSelections = <int>{0, 1, 2, 3};
+  final weeklyReviews = <String, Map<String, dynamic>>{};
+  final nextWeekHints = <String, Map<String, dynamic>>{};
+  final cookingHistory = <Map<String, dynamic>>[];
+  Map<String, dynamic> reviewDraft = {};
+  final reviewSuggestions = <String>{};
+  String? reviewError;
+  String reviewReasonDraft = '';
   final weeklyExpenses = <String, double>{};
   double? get expenses => weeklyExpenses[dateKey(week)];
   set expenses(double? value) {
@@ -73,9 +143,46 @@ class _PlanningPageState extends State<PlanningPage> {
     }
   }
 
+  int householdPage = 0;
+  bool householdDemoJoined = true;
+  String demoAlexRole = 'Mitglied';
+  String pendingMemberRole = 'Mitglied';
+  bool roleConfirmed = false;
+  bool leaveConfirmed = false;
+  String invitationEmail = '';
+  String invitationRole = 'Mitglied';
+  String? invitationError;
+  final householdInvitations = <Map<String, dynamic>>[];
+  bool separateHouseholdMeals = true;
+  Recipe? firstHouseholdRecipe;
+  Recipe? secondHouseholdRecipe;
+  int firstHouseholdPortions = 2;
+  int secondHouseholdPortions = 1;
+  int householdMealDay = 5;
+  final personalExclusions = <String>{};
+  final personalDislikes = <String>{};
+  String? originalRule;
+  String ruleName = '';
+  bool personalRule = false;
+  String dislikeName = '';
+  String? originalDislike;
+  bool dislikeActive = true;
+  String? ruleError;
   String householdName = 'Zuhause';
   String preferences = 'Noch keine Vorlieben hinterlegt';
   String pantryFilter = 'Alle';
+  final localWeekCache = <String, WeeklyPlan>{};
+  bool preparedBusy = false;
+  String? selectedPreparedId;
+  Map<String, dynamic> preparedEditor = {};
+  DateTime? preparedPlanDate;
+  int preparedPlanPortions = 1;
+  String? preparedError;
+  int pantryPage = 0;
+  List<Map<String, dynamic>> receiptDraft = [];
+  bool receiptResolved = false;
+  bool showAllReceiptItems = false;
+  int leftoverRecipeIndex = 0;
   List<Map<String, dynamic>> pantry = [];
   final searchController = TextEditingController();
   static const sayings = [
@@ -93,12 +200,36 @@ class _PlanningPageState extends State<PlanningPage> {
     writeSession(
       preferencesKey,
       jsonEncode({
+        'rememberedRecipes': rememberedRecipes.toList(),
+        'favoriteRecipes': favoriteRecipes.toList(),
+        'hiddenRecipes': hiddenRecipes.toList(),
+        'planBudget': planBudget,
+        'planBudgetInitialized': planBudgetInitialized,
         'budget': budget,
         'weeklyExpenses': weeklyExpenses,
+        'weeklyReviews': weeklyReviews,
+        'nextWeekHints': nextWeekHints,
+        'cookingHistory': cookingHistory,
         'household': householdName,
+        'householdDemoJoined': householdDemoJoined,
+        'demoAlexRole': demoAlexRole,
+        'householdInvitations': householdInvitations,
         'servings': servings,
         'preferences': preferences,
+        'personalExclusions': personalExclusions.toList(),
+        'personalDislikes': personalDislikes.toList(),
         'pantry': pantry,
+        'personalRecipes': personalRecipes,
+        'cookedEntries': cookedEntries.toList(),
+        'preparedMeals': preparedMeals,
+        'survey': {
+          'completed': surveyCompleted,
+          'exclusions': exclusions.toList(),
+          'diet': diet,
+          'days': planningDays,
+          'minutes': maxMinutes,
+          'startDay': startDay,
+        },
       }),
     );
   }
@@ -108,7 +239,21 @@ class _PlanningPageState extends State<PlanningPage> {
       final raw = readSession(preferencesKey);
       if (raw == null) return;
       final data = jsonDecode(raw) as Map<String, dynamic>;
+      rememberedRecipes.addAll(
+        List<String>.from(data['rememberedRecipes'] as List? ?? []),
+      );
+      favoriteRecipes.addAll(
+        List<String>.from(data['favoriteRecipes'] as List? ?? []),
+      );
+      hiddenRecipes.addAll(
+        List<String>.from(data['hiddenRecipes'] as List? ?? []),
+      );
+      planBudget = (data['planBudget'] as num?)?.toDouble();
+      planBudgetInitialized = data['planBudgetInitialized'] == true;
       budget = (data['budget'] as num?)?.toDouble() ?? 75;
+      weeklyReviews.addAll((data['weeklyReviews'] as Map<String, dynamic>? ?? {}).map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map))));
+      nextWeekHints.addAll((data['nextWeekHints'] as Map<String, dynamic>? ?? {}).map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map))));
+      cookingHistory.addAll((data['cookingHistory'] as List? ?? []).map((v) => Map<String, dynamic>.from(v as Map)));
       final storedExpenses =
           data['weeklyExpenses'] as Map<String, dynamic>? ?? {};
       weeklyExpenses.addAll(
@@ -116,9 +261,24 @@ class _PlanningPageState extends State<PlanningPage> {
           (key, value) => MapEntry(key, (value as num).toDouble()),
         ),
       );
+      householdDemoJoined = data['householdDemoJoined'] as bool? ?? true;
+      demoAlexRole = data['demoAlexRole'] as String? ?? 'Mitglied';
+      householdInvitations.addAll((data['householdInvitations'] as List? ?? []).map((v) => Map<String, dynamic>.from(v as Map)));
       householdName = data['household'] as String? ?? 'Zuhause';
       servings = data['servings'] as int? ?? 2;
+      personalExclusions.addAll(List<String>.from(data['personalExclusions'] as List? ?? []));
+      personalDislikes.addAll(List<String>.from(data['personalDislikes'] as List? ?? []));
       preferences = data['preferences'] as String? ?? preferences;
+      final survey = data['survey'] as Map<String, dynamic>? ?? {};
+      surveyCompleted = survey['completed'] == true;
+      exclusions.addAll(List<String>.from(survey['exclusions'] as List? ?? []));
+      diet = survey['diet'] as String? ?? diet;
+      planningDays = (survey['days'] as int? ?? 7).clamp(1, 7);
+      maxMinutes = survey['minutes'] as int? ?? 30;
+      startDay = (survey['startDay'] as int? ?? 0).clamp(0, 6);
+      cookedEntries.addAll(List<String>.from(data['cookedEntries'] as List? ?? []));
+      preparedMeals.addAll((data['preparedMeals'] as List? ?? []).map((p) => Map<String, dynamic>.from(p as Map)));
+      personalRecipes.addAll((data['personalRecipes'] as List? ?? []).map((r) => Map<String, dynamic>.from(r as Map)));
       pantry = (data['pantry'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
@@ -130,6 +290,7 @@ class _PlanningPageState extends State<PlanningPage> {
   @override
   void dispose() {
     sayingTimer?.cancel();
+    cookingTicker?.cancel();
     searchController.dispose();
     super.dispose();
   }
@@ -265,6 +426,8 @@ class _PlanningPageState extends State<PlanningPage> {
           ..clear()
           ..addAll(nextChecked);
       });
+      syncPreparedReservations(week, nextPlan);
+      savePreferences();
       return true;
     } catch (_) {
       if (mounted) {
@@ -287,15 +450,23 @@ class _PlanningPageState extends State<PlanningPage> {
 
   Future<void> changeWeek(int delta) async {
     if (saving || loading) return;
+    localWeekCache[dateKey(week)] = WeeklyPlan(meals: Map<int, PlannedMeal>.from(plan), checked: Set<(String, String)>.from(checked));
     setState(() {
       week = DateTime(week.year, week.month, week.day + delta * 7);
+      draft = null;
+      proposalConfirmed = false;
+      surveyStep = 0;
       plan.clear();
       checked.clear();
     });
-    if (widget.store != null) await loadWeek();
+    if (widget.store != null) { await loadWeek(); }
+    else {
+      final cached = localWeekCache[dateKey(week)];
+      if (cached != null) update(() { plan.addAll(cached.meals); checked.addAll(cached.checked); });
+    }
   }
 
-  Future<void> addRecipe(Recipe recipe) async {
+  Future<void> addRecipe(Recipe recipe, {int? portions}) async {
     if (widget.client != null && widget.user == null) {
       await account();
       return;
@@ -318,7 +489,7 @@ class _PlanningPageState extends State<PlanningPage> {
     );
     if (day == null || !mounted) return;
     final next = Map<int, PlannedMeal>.from(plan)
-      ..[day] = PlannedMeal(recipe, servings);
+      ..[day] = PlannedMeal(recipe, portions ?? servings);
     if (!await saveMeals(next)) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -331,108 +502,25 @@ class _PlanningPageState extends State<PlanningPage> {
 
   Future<void> adjustServings(int day, int delta) async {
     final meal = plan[day];
-    if (meal == null || meal.servings + delta < 1) return;
+    if (meal == null || meal.servings + delta < 1 || meal.preparedConsumed) return;
+    if (meal.preparedMealId != null) {
+      final stored = findPreparedMeal(meal.preparedMealId!);
+      if (stored == null || meal.servings + delta > preparedAvailable(stored, exceptDate: dateKey(week.add(Duration(days: day))))) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nicht genug freie Portionen vorhanden.'))); return;
+      }
+    }
     final next = Map<int, PlannedMeal>.from(plan)
-      ..[day] = PlannedMeal(meal.recipe, meal.servings + delta);
+      ..[day] = PlannedMeal(meal.recipe, meal.servings + delta, preparedMealId: meal.preparedMealId);
     await saveMeals(next);
   }
 
-  void details(Recipe recipe) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      constraints: BoxConstraints(
-        maxWidth: 640,
-        maxHeight: MediaQuery.sizeOf(context).height * .9,
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'FRISCH AUF DEINEN TELLER',
-                  style: TextStyle(
-                    color: AppColors.sage,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  recipe.name,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                Text(
-                  '${recipe.minutes} Minuten · ${recipe.servings} Portionen',
-                ),
-                const SizedBox(height: 16),
-                Text('Zutaten', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final item in recipe.ingredients)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: Text(
-                              '${item.quantity.toStringAsFixed(0)} ${item.unit} ${item.name}',
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.cream,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'So kommt es auf den Tisch',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      for (var i = 0; i < recipe.steps.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text('${i + 1}. ${recipe.steps[i]}'),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      addRecipe(recipe);
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Zum Wochenplan hinzufügen'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Recipe? openedRecipe;
+  int detailServings = 2;
+
+  void details(Recipe recipe) => update(() {
+    openedRecipe = recipe;
+    detailServings = recipe.servings;
+  });
 
   @override
   Widget build(BuildContext context) => miseScaffold();

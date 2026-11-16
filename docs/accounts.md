@@ -42,6 +42,25 @@ Vorschau wird `http://127.0.0.1:8766/` verwendet. Bei Veröffentlichung die echt
 HTTPS-Domain eintragen. Danach ist eine manuelle Anmeldung in der App möglich;
 Der PKCE-Speicher wird projektbezogen bereitgestellt. Ein Bestätigungscode wird beim Start gegen eine Sitzung getauscht und anschließend aus der URL entfernt. Ohne passenden Browser-Speicher kann man sich nach Bestätigung manuell anmelden. Passwort-zurücksetzen folgt separat.
 
+## Passwort vergessen
+
+Auf der Anmeldeseite führt „Passwort vergessen?“ zum E-Mail-Formular.
+Der Link wird mit Supabase `resetPasswordForEmail` angefordert. Die Rückleitung
+verwendet im Web die aktuelle App-Adresse ohne Query und Fragment. Diese Adresse
+muss in Supabase unter Authentication → URL Configuration als Redirect URL
+zugelassen sein. Den Link im selben Browser öffnen, in dem er angefordert wurde,
+damit der PKCE-Verifier verfügbar ist.
+
+`AccountScope` erkennt das Ereignis `passwordRecovery` nach dem Code-Austausch
+und zeigt das Formular für das neue Passwort. Erst nach erfolgreichem
+`updateUser` wird die App wieder geöffnet. Passwörter müssen mindestens acht
+Zeichen haben und zweimal übereinstimmend eingegeben werden. Abgelaufene oder
+nicht einlösbare Links führen zu einem Hinweis, einen neuen Link anzufordern.
+
+Der tatsächliche E-Mail-Versand und die Supabase-Redirect-Konfiguration müssen
+mit der verwendeten App-Adresse geprüft werden. Der automatisierte Recovery-Test
+ist angelegt, aber noch nicht abschließend bestätigt.
+
 Referenzen:
 - https://supabase.com/docs/reference/dart/auth-signup
 - https://supabase.com/docs/reference/dart/auth-signinwithpassword

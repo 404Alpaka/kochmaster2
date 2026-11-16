@@ -21,6 +21,8 @@ class Recipe {
     required this.servings,
     required this.ingredients,
     required this.steps,
+    this.verifiedAllergens,
+    this.verifiedDiets,
   });
   final String id;
   final String name;
@@ -28,6 +30,10 @@ class Recipe {
   final int servings;
   final List<IngredientAmount> ingredients;
   final List<String> steps;
+
+  /// Null means the recipe has not been reviewed for planning restrictions.
+  final Set<String>? verifiedAllergens;
+  final Set<String>? verifiedDiets;
 }
 
 abstract interface class RecipeRepository {
@@ -40,6 +46,8 @@ Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
   'minutes': recipe.minutes,
   'servings': recipe.servings,
   'steps': recipe.steps,
+  'verified_allergens': recipe.verifiedAllergens?.toList(),
+  'verified_diets': recipe.verifiedDiets?.toList(),
   'ingredients': [
     for (final item in recipe.ingredients)
       {
@@ -56,6 +64,10 @@ Recipe recipeFromSnapshot(Map<String, dynamic> data) => Recipe(
   minutes: data['minutes'] as int,
   servings: data['servings'] as int,
   steps: List<String>.from(data['steps'] as List),
+  verifiedAllergens: (data['verified_allergens'] as List?)
+      ?.cast<String>()
+      .toSet(),
+  verifiedDiets: (data['verified_diets'] as List?)?.cast<String>().toSet(),
   ingredients: (data['ingredients'] as List)
       .map(
         (item) => IngredientAmount(

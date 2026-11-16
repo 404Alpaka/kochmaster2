@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase/supabase.dart';
 
 import '../data/session_storage.dart';
+import 'password_reset_page.dart';
 
 class AccountScope extends StatefulWidget {
   const AccountScope({
@@ -24,6 +25,8 @@ class _AccountScopeState extends State<AccountScope> {
   StreamSubscription<AuthState>? subscription;
   bool ready = false;
   String? error;
+  bool recovery = false;
+  String get recoveryKey => '${widget.storageKey}-recovery';
   @override
   void initState() {
     super.initState();
@@ -33,6 +36,13 @@ class _AccountScopeState extends State<AccountScope> {
   Future<void> restore() async {
     subscription = widget.client.auth.onAuthStateChange.listen(
       (event) {
+        if (event.event == AuthChangeEvent.passwordRecovery) {
+          recovery = true;
+          writeSession(recoveryKey, 'true');
+        } else if (event.event == AuthChangeEvent.signedOut) {
+          recovery = false;
+          writeSession(recoveryKey, null);
+        }
         if (event.session != null) {
           writeSession(widget.storageKey, jsonEncode(event.session!.toJson()));
         } else if (event.event == AuthChangeEvent.signedOut) {
@@ -53,6 +63,7 @@ class _AccountScopeState extends State<AccountScope> {
       },
     );
     final saved = readSession(widget.storageKey);
+    recovery = readSession(recoveryKey) == 'true';
     if (saved != null) {
       try {
         await widget.client.auth.recoverSession(saved);
@@ -67,7 +78,7 @@ class _AccountScopeState extends State<AccountScope> {
       try {
         await widget.client.auth.exchangeCodeForSession(code);
       } catch (_) {
-        error = 'Die automatische Anmeldung über den Bestätigungslink ist fehlgeschlagen. Bitte melde dich mit E-Mail und Passwort an.';
+        error = 'Der E-Mail-Link konnte nicht eingelöst werden. Er ist möglicherweise abgelaufen oder wurde in einem anderen Browser geöffnet. Bitte fordere bei Bedarf über „Passwort vergessen?“ einen neuen Link an.';
       } finally {
         clearAuthCallback();
       }
@@ -85,6 +96,21 @@ class _AccountScopeState extends State<AccountScope> {
   Widget build(BuildContext context) {
     if (!ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (recovery && widget.client.auth.currentSession != null) {
+      return PasswordResetPage(
+        client: widget.client,
+        recovery: true,
+        onComplete: () {
+          writeSession(recoveryKey, null);
+          setState(() => recovery = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Dein neues Passwort wurde gespeichert.'),
+            ),
+          );
+        },
+      );
     }
     return Column(
       children: [

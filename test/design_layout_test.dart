@@ -37,6 +37,12 @@ void main() {
       expect(tester.takeException(), isNull);
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
         await tester.runAsync(() async {
+          final context = tester.element(find.byType(Scaffold).first);
+          await precacheImage(const AssetImage('assets/images/pasta.jpg'), context);
+          if (context.mounted) await precacheImage(const AssetImage('assets/images/rice.jpg'), context);
+        });
+        await tester.pumpAndSettle();
+        await tester.runAsync(() async {
           final boundary = tester.renderObject<RenderRepaintBoundary>(
             find.byKey(preview),
           );
@@ -52,15 +58,21 @@ void main() {
       await tester.pumpAndSettle();
       await reveal(tester, find.text('1 von 2 Rezepten'));
       expect(find.text('1 von 2 Rezepten'), findsOneWidget);
-      final details = find.text('Rezept ansehen').first;
+      final details = find.byTooltip('Rezept ansehen').first;
       await reveal(tester, details, delta: -150);
       await tester.pumpAndSettle();
       await tester.tap(details);
       await tester.pumpAndSettle();
+      expect(find.text('Entdecken'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
+      await tester.tap(find.byTooltip('Mehr Portionen'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 Personen'), findsOneWidget);
+      await reveal(tester, find.text('So kommt es auf den Tisch'));
       expect(find.text('So kommt es auf den Tisch'), findsOneWidget);
       expect(tester.takeException(), isNull);
       final add = find.text('Zum Wochenplan hinzufügen');
-      await tester.ensureVisible(add);
+      await reveal(tester, add);
       await tester.pumpAndSettle();
       await tester.tap(add);
       await tester.pumpAndSettle();

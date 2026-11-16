@@ -21,6 +21,8 @@ void writeSession(String key, String? session) {
 }
 
 String? authCallbackCode() => Uri.base.queryParameters['code'];
+String? authRedirectUrl() =>
+    Uri.base.replace(query: '', fragment: '').toString();
 void clearAuthCallback() {
   final query = Map<String, String>.from(Uri.base.queryParameters)
     ..remove('code');

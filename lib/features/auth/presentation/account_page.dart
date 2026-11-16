@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'auth_messages.dart';
+import 'password_reset_page.dart';
 
 import 'package:supabase/supabase.dart';
 
@@ -168,6 +169,19 @@ class _AccountPageState extends State<AccountPage> {
                         ? 'Registrieren'
                         : 'Anmelden',
                   ),
+                ),
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PasswordResetPage(
+                              client: widget.client,
+                              initialEmail: email.text.trim(),
+                            ),
+                          ),
+                        ),
+                  child: const Text('Passwort vergessen?'),
                 ),
                 TextButton(
                   onPressed: busy

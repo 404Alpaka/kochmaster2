@@ -4,6 +4,7 @@ import '../../recipes/domain/recipe.dart';
 List<IngredientAmount> buildShoppingList(Iterable<PlannedMeal> meals) {
   final totals = <(String, String), IngredientAmount>{};
   for (final meal in meals) {
+    if (meal.preparedMealId != null) continue;
     for (final ingredient in meal.recipe.ingredients) {
       final key = (ingredient.ingredientId, ingredient.unit);
       final quantity =
