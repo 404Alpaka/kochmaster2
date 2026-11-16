@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../core/theme/app_theme.dart';
+
 import '../features/recipes/data/demo_recipe_repository.dart';
 import 'recipe_loader.dart';
 
@@ -16,13 +18,9 @@ class KochmasterApp extends StatelessWidget {
   final RecipeRepository? repository;
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Kochmaster',
+    title: 'mise.',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF286348)),
-      scaffoldBackgroundColor: const Color(0xFFF8F8F2),
-    ),
+    theme: AppTheme.light,
     home: client != null
         ? AccountScope(
             client: client!,
@@ -30,6 +28,7 @@ class KochmasterApp extends StatelessWidget {
             builder: (user) => RecipeLoader(
               repository: repository!,
               builder: (recipes) => PlanningPage(
+                key: ValueKey(user?.id ?? 'guest'),
                 recipes: recipes,
                 isDemo: false,
                 client: client,

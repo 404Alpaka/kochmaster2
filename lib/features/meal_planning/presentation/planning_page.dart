@@ -1,4 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
+
+import '../../auth/data/session_storage.dart';
+
 import 'package:material_ui/material_ui.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 import '../../recipes/data/admin_recipe_repository.dart';
 import '../../recipes/data/supabase_recipe_repository.dart';
@@ -11,6 +18,8 @@ import '../data/weekly_plan_repository.dart';
 import '../domain/meal_plan.dart';
 import '../../recipes/domain/recipe.dart';
 import '../../shopping/domain/build_shopping_list.dart';
+
+part 'mise_views.dart';
 
 class PlanningPage extends StatefulWidget {
   const PlanningPage({
@@ -47,7 +56,83 @@ class _PlanningPageState extends State<PlanningPage> {
   ];
   int tab = 0;
   int servings = 2;
+
   String query = '';
+  int recipeFilter = 0;
+  int selectedDay = DateTime.now().weekday - 1;
+  int saying = 0;
+  Timer? sayingTimer;
+  double budget = 75;
+  final weeklyExpenses = <String, double>{};
+  double? get expenses => weeklyExpenses[dateKey(week)];
+  set expenses(double? value) {
+    if (value == null) {
+      weeklyExpenses.remove(dateKey(week));
+    } else {
+      weeklyExpenses[dateKey(week)] = value;
+    }
+  }
+
+  String householdName = 'Zuhause';
+  String preferences = 'Noch keine Vorlieben hinterlegt';
+  String pantryFilter = 'Alle';
+  List<Map<String, dynamic>> pantry = [];
+  final searchController = TextEditingController();
+  static const sayings = [
+    'Gutes Essen. Clever geplant.',
+    'Dein Vorrat. Dein nächstes Lieblingsgericht.',
+    'Weniger Reste. Mehr Genuss.',
+    'Zusammen schmeckt der Alltag besser.',
+  ];
+
+  String get preferencesKey => 'mise-preferences-${widget.user?.id ?? 'guest'}';
+
+  void update(VoidCallback change) => setState(change);
+
+  void savePreferences() {
+    writeSession(
+      preferencesKey,
+      jsonEncode({
+        'budget': budget,
+        'weeklyExpenses': weeklyExpenses,
+        'household': householdName,
+        'servings': servings,
+        'preferences': preferences,
+        'pantry': pantry,
+      }),
+    );
+  }
+
+  void restorePreferences() {
+    try {
+      final raw = readSession(preferencesKey);
+      if (raw == null) return;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      budget = (data['budget'] as num?)?.toDouble() ?? 75;
+      final storedExpenses =
+          data['weeklyExpenses'] as Map<String, dynamic>? ?? {};
+      weeklyExpenses.addAll(
+        storedExpenses.map(
+          (key, value) => MapEntry(key, (value as num).toDouble()),
+        ),
+      );
+      householdName = data['household'] as String? ?? 'Zuhause';
+      servings = data['servings'] as int? ?? 2;
+      preferences = data['preferences'] as String? ?? preferences;
+      pantry = (data['pantry'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } catch (_) {
+      /* Invalid local preferences fall back to their defaults. */
+    }
+  }
+
+  @override
+  void dispose() {
+    sayingTimer?.cancel();
+    searchController.dispose();
+    super.dispose();
+  }
 
   DateTime week = mondayOf(DateTime.now());
   bool loading = false;
@@ -58,6 +143,12 @@ class _PlanningPageState extends State<PlanningPage> {
   @override
   void initState() {
     super.initState();
+    restorePreferences();
+    sayingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted && tab == 0) {
+        setState(() => saying = (saying + 1) % sayings.length);
+      }
+    });
     if (widget.store != null) loadWeek();
     if (widget.user != null) checkAdmin();
   }
@@ -250,7 +341,11 @@ class _PlanningPageState extends State<PlanningPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
+      constraints: BoxConstraints(
+        maxWidth: 640,
+        maxHeight: MediaQuery.sizeOf(context).height * .9,
+      ),
+      builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
@@ -258,6 +353,16 @@ class _PlanningPageState extends State<PlanningPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Text(
+                  'FRISCH AUF DEINEN TELLER',
+                  style: TextStyle(
+                    color: AppColors.sage,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(
                   recipe.name,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -266,16 +371,61 @@ class _PlanningPageState extends State<PlanningPage> {
                   '${recipe.minutes} Minuten · ${recipe.servings} Portionen',
                 ),
                 const SizedBox(height: 16),
-                for (final item in recipe.ingredients)
-                  Text(
-                    '${item.quantity.toStringAsFixed(0)} ${item.unit} ${item.name}',
+                Text('Zutaten', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in recipe.ingredients)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Text(
+                              '${item.quantity.toStringAsFixed(0)} ${item.unit} ${item.name}',
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
+                ),
                 const SizedBox(height: 16),
-                for (var i = 0; i < recipe.steps.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text('${i + 1}. ${recipe.steps[i]}'),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.cream,
+                    borderRadius: BorderRadius.circular(20),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'So kommt es auf den Tisch',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      for (var i = 0; i < recipe.steps.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text('${i + 1}. ${recipe.steps[i]}'),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      addRecipe(recipe);
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Zum Wochenplan hinzufügen'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -285,369 +435,5 @@ class _PlanningPageState extends State<PlanningPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final shopping = buildShoppingList(plan.values);
-    final filtered = recipes.where(
-      (r) => r.name.toLowerCase().contains(query.toLowerCase()),
-    );
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kochmaster'),
-        actions: [
-          if (admin)
-            IconButton(
-              tooltip: 'Rezepte verwalten',
-              onPressed: saving ? null : manageRecipes,
-              icon: const Icon(Icons.admin_panel_settings_outlined),
-            ),
-          if (widget.client != null && widget.user == null)
-            TextButton(onPressed: account, child: const Text('Anmelden')),
-          if (widget.user != null)
-            TextButton(
-              onPressed: saving ? null : signOut,
-              child: const Text('Abmelden'),
-            ),
-        ],
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : loadError != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(loadError!),
-                    FilledButton(
-                      onPressed: loadWeek,
-                      child: const Text('Wochenplan erneut laden'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : AbsorbPointer(
-              absorbing: saving,
-              child: SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 880),
-                    child: ListView(
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        Text(
-                          [
-                            'Was kochen wir heute?',
-                            'Deine Woche, dein Geschmack.',
-                            'Alles für deinen Einkauf.',
-                          ][tab],
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.isDemo
-                              ? 'Demo · Beispieldaten · Änderungen bleiben nur bis zum Neustart erhalten.'
-                              : widget.user == null
-                              ? 'Rezepte aus der Datenbank · Zum Speichern bitte anmelden.'
-                              : 'Dein Wochenplan und Einkaufsstatus werden in deinem Konto gespeichert.',
-                        ),
-                        if (widget.user?.email != null)
-                          Text(widget.user!.email!),
-                        if (widget.store != null) ...[
-                          Row(
-                            children: [
-                              Icon(
-                                saving
-                                    ? Icons.cloud_upload_outlined
-                                    : saveError != null
-                                    ? Icons.error_outline
-                                    : Icons.cloud_done_outlined,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  saving
-                                      ? 'Wird gespeichert …'
-                                      : saveError != null
-                                      ? 'Nicht gespeichert'
-                                      : saved
-                                      ? 'Gespeichert'
-                                      : 'Wird geladen …',
-                                  key: const ValueKey('save-status'),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Gespeicherten Wochenplan neu laden',
-                                onPressed: saving ? null : loadWeek,
-                                icon: const Icon(Icons.refresh),
-                              ),
-                            ],
-                          ),
-                          if (saveError != null)
-                            Text(
-                              saveError!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                        ],
-                        if (saving) const LinearProgressIndicator(),
-                        Row(
-                          children: [
-                            IconButton(
-                              tooltip: 'Vorherige Woche',
-                              onPressed: () => changeWeek(-1),
-                              icon: const Icon(Icons.chevron_left),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Woche ${displayDate(week)} – ${displayDate(DateTime(week.year, week.month, week.day + 6))}',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Nächste Woche',
-                              onPressed: () => changeWeek(1),
-                              icon: const Icon(Icons.chevron_right),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        if (tab == 0) ...[
-                          Text(
-                            "${filtered.length} von ${recipes.length} Rezepten",
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            decoration: const InputDecoration(
-                              labelText: 'Rezepte suchen',
-                              prefixIcon: Icon(Icons.search),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (value) => setState(() => query = value),
-                          ),
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text('Portionen für neue Planeinträge'),
-                              ),
-                              IconButton(
-                                onPressed: servings > 1
-                                    ? () => setState(() => servings--)
-                                    : null,
-                                icon: const Icon(Icons.remove),
-                              ),
-                              Text('$servings'),
-                              IconButton(
-                                onPressed: () => setState(() => servings++),
-                                icon: const Icon(Icons.add),
-                              ),
-                            ],
-                          ),
-                          if (filtered.isEmpty)
-                            Text(
-                              recipes.isEmpty
-                                  ? 'Noch keine veröffentlichten Rezepte vorhanden.'
-                                  : 'Keine passenden Rezepte gefunden.',
-                            ),
-                          for (final recipe in filtered)
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      recipe.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge,
-                                    ),
-                                    Text(
-                                      '${recipe.minutes} Minuten · ${recipe.servings} Basisportionen',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      spacing: 12,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () => details(recipe),
-                                          child: const Text('Rezept ansehen'),
-                                        ),
-                                        FilledButton.icon(
-                                          onPressed: () => addRecipe(recipe),
-                                          icon: const Icon(Icons.add),
-                                          label: const Text('Wochenplan'),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                        if (tab == 1) ...[
-                          Text('${plan.length} von 7 Tagen geplant'),
-                          const SizedBox(height: 8),
-                          FilledButton.icon(
-                            onPressed: widget.store != null
-                                ? () => persist(
-                                    Map<int, PlannedMeal>.from(plan),
-                                    Set<(String, String)>.from(checked),
-                                  )
-                                : widget.client != null
-                                ? account
-                                : null,
-                            icon: const Icon(Icons.cloud_upload_outlined),
-                            label: const Text('Wochenplan speichern'),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Ein Gericht pro Tag. Rezepte fügst du im Bereich Rezepte hinzu.',
-                          ),
-                          if (plan.isEmpty)
-                            TextButton.icon(
-                              onPressed: () => setState(() => tab = 0),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Erstes Rezept auswählen'),
-                            ),
-                          for (var i = 0; i < days.length; i++)
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${days[i]} · ${displayDate(DateTime(week.year, week.month, week.day + i))}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(plan[i]?.recipe.name ?? 'Noch frei'),
-                                    if (plan[i] != null)
-                                      Wrap(
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        children: [
-                                          IconButton(
-                                            key: ValueKey('decrease-$i'),
-                                            tooltip: 'Weniger Portionen',
-                                            onPressed: plan[i]!.servings > 1
-                                                ? () => adjustServings(i, -1)
-                                                : null,
-                                            icon: const Icon(Icons.remove),
-                                          ),
-                                          Text(
-                                            '${plan[i]!.servings} Portionen',
-                                          ),
-                                          IconButton(
-                                            key: ValueKey('increase-$i'),
-                                            tooltip: 'Mehr Portionen',
-                                            onPressed: () =>
-                                                adjustServings(i, 1),
-                                            icon: const Icon(Icons.add),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                details(plan[i]!.recipe),
-                                            child: const Text('Rezept'),
-                                          ),
-                                          IconButton(
-                                            key: ValueKey('remove-$i'),
-                                            tooltip: 'Gericht entfernen',
-                                            onPressed: () => saveMeals(
-                                              Map<int, PlannedMeal>.from(plan)
-                                                ..remove(i),
-                                            ),
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                        if (tab == 2) ...[
-                          if (shopping.isNotEmpty) ...[
-                            Text(
-                              '${shopping.where((item) => checked.contains((item.ingredientId, item.unit))).length} von ${shopping.length} Zutaten erledigt',
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Mengen aus allen geplanten Gerichten, angepasst an deine Portionen.',
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (shopping.isEmpty)
-                            const Text(
-                              'Plane zuerst ein Rezept. Deine Zutaten erscheinen dann hier.',
-                            ),
-                          for (final item in shopping)
-                            CheckboxListTile(
-                              title: Text(
-                                item.name,
-                                style: TextStyle(
-                                  decoration:
-                                      checked.contains((
-                                        item.ingredientId,
-                                        item.unit,
-                                      ))
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${item.quantity.toStringAsFixed(1)} ${item.unit}',
-                              ),
-                              value: checked.contains((
-                                item.ingredientId,
-                                item.unit,
-                              )),
-                              onChanged: (value) {
-                                final next = Set<(String, String)>.from(
-                                  checked,
-                                );
-                                final key = (item.ingredientId, item.unit);
-                                if (value == true) {
-                                  next.add(key);
-                                } else {
-                                  next.remove(key);
-                                }
-                                persist(Map<int, PlannedMeal>.from(plan), next);
-                              },
-                            ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (value) => setState(() => tab = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_menu),
-            label: 'Rezepte',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month),
-            label: 'Wochenplan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_basket_outlined),
-            label: 'Einkaufsliste',
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => miseScaffold();
 }

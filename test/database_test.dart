@@ -1,3 +1,5 @@
+import 'scroll_helpers.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kochmaster/app/kochmaster_app.dart';
@@ -41,7 +43,10 @@ void main() {
     expect(find.text('Tomaten-Spinat-Pasta'), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, 'Erneut versuchen'));
     await tester.pumpAndSettle();
+
+    await reveal(tester, find.text('Tomaten-Spinat-Pasta'));
     expect(find.text('Tomaten-Spinat-Pasta'), findsOneWidget);
+    await reveal(tester, find.textContaining('Rezepte aus der Datenbank'));
     expect(find.textContaining('Rezepte aus der Datenbank'), findsOneWidget);
   });
 }

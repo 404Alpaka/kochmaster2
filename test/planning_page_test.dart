@@ -1,3 +1,5 @@
+import 'scroll_helpers.dart';
+
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
@@ -38,7 +40,8 @@ void main() {
       final store = MemoryWeekStore();
       await tester.pumpWidget(app(store));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
+      await reveal(
+        tester,
         find.widgetWithText(FilledButton, 'Wochenplan').first,
       );
       await tester.pumpAndSettle();
@@ -48,10 +51,10 @@ void main() {
       await tester.tap(find.text('Montag'));
       await tester.pumpAndSettle();
       expect(store.rows.length, 1);
-      await tester.tap(find.text('Einkaufsliste'));
+      await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
       final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
-      await tester.ensureVisible(tomato);
+      await reveal(tester, tomato);
       await tester.pumpAndSettle();
       await tester.tap(tomato);
       await tester.pumpAndSettle();
@@ -59,29 +62,29 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(app(store));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Einkaufsliste'));
+      await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(tomato);
+      await reveal(tester, tomato);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
-      await tester.ensureVisible(find.byTooltip('Nächste Woche'));
+      await reveal(tester, find.byTooltip('Nächste Woche'), delta: -150);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Nächste Woche'));
       await tester.pumpAndSettle();
       expect(find.text('Tomaten'), findsNothing);
       await tester.tap(find.byTooltip('Vorherige Woche'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Wochenplan'));
+      await tester.tap(find.text('Plan'));
       await tester.pumpAndSettle();
       final increase = find.byKey(const ValueKey('increase-0'));
-      await tester.ensureVisible(increase);
+      await reveal(tester, increase);
       await tester.pumpAndSettle();
       await tester.tap(increase);
       await tester.pumpAndSettle();
       expect(find.text('3 Portionen'), findsOneWidget);
-      await tester.tap(find.text('Einkaufsliste'));
+      await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(tomato);
+      await reveal(tester, tomato);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
       expect(find.text('450.0 g'), findsOneWidget);
@@ -99,14 +102,15 @@ void main() {
       store.fail = true;
       await tester.pumpWidget(app(store));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Einkaufsliste'));
+      await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
       final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
-      await tester.ensureVisible(tomato);
+      await reveal(tester, tomato);
       await tester.pumpAndSettle();
       await tester.tap(tomato);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
+      await reveal(tester, find.text('Nicht gespeichert'), delta: -150);
       expect(find.text('Nicht gespeichert'), findsOneWidget);
       expect(store.rows.values.single['checked'], isEmpty);
     },
