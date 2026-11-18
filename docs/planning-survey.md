@@ -16,14 +16,18 @@ Favoritengewichtung ist noch nicht angeschlossen.
 
 ## Grenzen der Rezeptdaten
 
-Das bestehende Supabase-Schema liefert noch keine geprüften Allergene oder
-Ernährungsweisen. Das Rezeptmodell unterstützt dafür optional
-`verifiedAllergens` und `verifiedDiets`; null bedeutet unbekannt. Solange die
-Katalogpflege diese Werte nicht liefert, sind solche Rezepte bei entsprechenden
-Einschränkungen ausgeschlossen. Freitext-Ausschlüsse sperren automatische
-Vorschläge bis eine überprüfte Zuordnung verfügbar ist. Es gibt keine aus Namen
-abgeleitete Allergie-Freigabe. Die UI weist auf fehlende geprüfte Daten hin.
+Die Migration `202611170001_recipe_planning_metadata.sql` erweitert Rezepte um
+`verified_allergens` und `verified_diets`. Vor dem Start der aktualisierten App
+muss sie nach den bisherigen Migrationen im Supabase-Projekt angewendet werden.
+Sie ist lokal vorbereitet und hier noch nicht auf einer Datenbank ausgeführt.
 
-Die Umfrage kann bereits vollständig verwendet werden. Für produktive Vorschläge
-mit Allergien/Ernährungsweisen müssen Datenbank, Rezeptpflege und Katalogabfrage
-um diese geprüften Metadaten erweitert werden.
+Rezept-Admins bestätigen die Prüfung im Rezepteditor und wählen enthaltene
+Allergene sowie zutreffende Ernährungsweisen. NULL bedeutet ungeprüft; eine
+leere Liste bedeutet geprüft ohne Treffer. Bestehende Rezepte bleiben ungeprüft.
+Die Allergenauswahl umfasst die sechs Ausschlüsse der Planung, keine vollständige
+Allergenkennzeichnung. Vegan wird zusätzlich als vegetarisch gespeichert.
+
+Öffentlicher Katalog und Adminansicht laden diese Angaben. Wochenplan-Snapshots
+bewahren ihren bisherigen Stand. Ungeprüfte Rezepte bleiben bei entsprechenden
+Einschränkungen ausgeschlossen. Freitext-Ausschlüsse sperren Vorschläge weiterhin;
+aus Rezept- oder Zutatennamen wird keine Freigabe abgeleitet.

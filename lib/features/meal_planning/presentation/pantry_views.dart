@@ -210,7 +210,7 @@ extension _PantryViews on _PlanningPageState {
         title(recipe.name), gap(10), Text(mealDescription(recipe, servings), style: muted), gap(14),
         surveyCard('Dein Vorrat kocht mit.', 'Abgleich nach Zutatennamen. Bitte Mengen prüfen; Zusatzkosten sind ohne Preise noch nicht berechnet.', color: AppColors.softGreen), gap(14),
         const Text('So kommt dein Rest auf den Tisch', style: TextStyle(fontWeight: FontWeight.w600)), gap(12),
-        for (var i = 0; i < recipe.steps.length; i++) ...[Text('${i + 1}  ${recipe.steps[i]}', style: muted), gap(8)],
+        for (var i = 0; i < recipe.steps.length; i++) ...[Text('${i + 1}  ${renderRecipeStep(recipe, recipe.steps[i], portions: servings)}', style: muted), gap(8)],
         TextButton(onPressed: () { selectTab(0); details(recipe); }, child: const Text('Rezept ansehen →')),
       ]), padding: const EdgeInsets.all(18)), gap(18),
       surveyCard('Für morgen mitgedacht', 'Passe die Portionen beim Einplanen an deinen Bedarf an. Vorräte werden erst nach deiner eigenen Prüfung verändert.', color: AppColors.softGreen),

@@ -584,28 +584,7 @@ extension _PlanningSurvey on _PlanningPageState {
     if (hiddenRecipes.contains(recipe.id)) return false;
     if (maxMinutes > 0 && recipe.minutes > maxMinutes) return false;
     if (recipe.ingredients.isEmpty) return false;
-    if (diet != 'Ohne Einschränkung' &&
-        !(recipe.verifiedDiets?.contains(diet) ?? false)) {
-      return false;
-    }
-    if (activeExclusions.isNotEmpty) {
-      // Free-form exclusions require explicit review; never infer safety from names.
-      const known = {
-        'Milch',
-        'Eier',
-        'Erdnüsse',
-        'Schalenfrüchte',
-        'Gluten',
-        'Soja',
-      };
-      if (!known.containsAll(activeExclusions) || recipe.verifiedAllergens == null) {
-        return false;
-      }
-      if (recipe.verifiedAllergens!.intersection(activeExclusions).isNotEmpty) {
-        return false;
-      }
-    }
-    return true;
+    return matchesVerifiedRestrictions(recipe, diet, activeExclusions);
   }
 
   List<Recipe> get eligibleRecipes => recipes.where((r) => recipeMatchesPlanning(r)).toList();

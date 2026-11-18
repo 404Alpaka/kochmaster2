@@ -86,11 +86,22 @@ void main() {
     );
     await tester.tap(find.text('Öffnen'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('recipe-name')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('recipe-name')));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('recipe-name')),
       'Neue Reispfanne',
     );
+    await tester.ensureVisible(find.byKey(const ValueKey('recipe-minutes')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('recipe-minutes')), '25');
+    await tester.ensureVisible(find.byKey(const ValueKey('recipe-servings')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('recipe-servings')), '3');
     await tester.ensureVisible(find.byKey(const ValueKey('ingredient-name-0')));
     await tester.pumpAndSettle();
@@ -102,7 +113,11 @@ void main() {
       find.byKey(const ValueKey('ingredient-amount-0')),
       '225,5',
     );
-    await tester.ensureVisible(find.byKey(const ValueKey('recipe-steps')));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('recipe-steps')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('recipe-steps')),
@@ -122,6 +137,8 @@ void main() {
     expect(store.payload!['steps'], ['Reis waschen.', 'Reis garen.']);
     expect((store.payload!['ingredients'] as List).single['quantity'], 225.5);
     expect(store.payload!['is_published'], isFalse);
+    expect(store.payload!['verified_allergens'], isNull);
+    expect(store.payload!['verified_diets'], isNull);
     expect(find.text('Öffnen'), findsOneWidget);
   });
   testWidgets('Bearbeitung lädt vorhandene Werte und Fehler erhält Eingaben', (
@@ -135,6 +152,8 @@ void main() {
       servings: 2,
       ingredients: [const IngredientAmount('rice', 'Reis', 100, 'g')],
       steps: ['Garen.'],
+      verifiedAllergens: {'Soja'},
+      verifiedDiets: {'Vegetarisch'},
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -146,6 +165,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Reis'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('recipe-name')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('recipe-name')));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('recipe-name')),
       'Geänderter Reis',
@@ -159,10 +185,25 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(button);
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView), const Offset(0, 1500));
+    await tester.scrollUntilVisible(
+      find.textContaining('Speichern fehlgeschlagen'),
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('Speichern fehlgeschlagen'), findsOneWidget);
-    expect(find.text('Geänderter Reis'), findsOneWidget);
+    expect(find.text('Geänderter Reis'), findsWidgets);
+    store.fail = false;
+    await tester.scrollUntilVisible(
+      button,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(store.payload!['verified_allergens'], ['Soja']);
+    expect(store.payload!['verified_diets'], ['Vegetarisch']);
   });
   testWidgets(
     'Löschen erfordert Bestätigung und Papierkorb bietet Wiederherstellung',
@@ -175,16 +216,173 @@ void main() {
         MaterialApp(home: AdminRecipesPage(repository: store)),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Löschen'));
+      await tester.scrollUntilVisible(
+        find.byTooltip('Löschen'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.byTooltip('Löschen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Löschen'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('In Papierkorb'));
       await tester.pumpAndSettle();
       expect(store.items.single.deleted, isTrue);
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.scrollUntilVisible(
+        find.text('Papierkorb 1'),
+        -250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Papierkorb 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Papierkorb 1'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Wiederherstellen'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Wiederherstellen'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Wiederherstellen'));
       await tester.pumpAndSettle();
       expect(store.items.single.deleted, isFalse);
+    },
+  );
+  testWidgets(
+    'Zutat wird mit aktueller Menge an der Cursorposition eingefügt',
+    (tester) async {
+      final recipe = Recipe(
+        id: 'rice',
+        name: 'Reis',
+        minutes: 10,
+        servings: 2,
+        ingredients: [const IngredientAmount('rice', 'Reis', 100, 'g')],
+        steps: ['Gare .'],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecipeEditorPage(
+            repository: AdminMemoryStore(),
+            existing: AdminRecipe(recipe, published: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('recipe-steps')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.byKey(const ValueKey('recipe-steps')));
+      await tester.pumpAndSettle();
+      final controller = tester
+          .widget<TextFormField>(find.byKey(const ValueKey('recipe-steps')))
+          .controller!;
+      controller.selection = const TextSelection.collapsed(offset: 5);
+      await tester.ensureVisible(find.text('Zutat einfügen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Zutat einfügen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('100 g Reis'));
+      await tester.pumpAndSettle();
+      expect(controller.text, 'Gare ⟦100 g Reis⟧.');
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Verknüpfte Mengen und Bildauswahl bleiben beim Speichern erhalten',
+    (tester) async {
+      final store = AdminMemoryStore();
+      final recipe = Recipe(
+        id: 'rice',
+        name: 'Reis',
+        minutes: 10,
+        servings: 2,
+        ingredients: [
+          const IngredientAmount('rice', 'Reis', 100, 'g', stepKey: 'stable'),
+        ],
+        steps: ['Gare {{ingredient:stable}}.'],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecipeEditorPage(
+            repository: store,
+            existing: AdminRecipe(recipe, published: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Bild ändern'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bild ändern'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find
+            .byWidgetPredicate(
+              (w) =>
+                  w is Image &&
+                  w.image is AssetImage &&
+                  (w.image as AssetImage).assetName ==
+                      'assets/images/pasta.jpg',
+            )
+            .last,
+      );
+      await tester.pumpAndSettle();
+      Future<void> field(String key, String value) async {
+        await tester.scrollUntilVisible(
+          find.byKey(ValueKey(key)),
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.ensureVisible(find.byKey(ValueKey(key)));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(ValueKey(key)), value);
+        await tester.pumpAndSettle();
+      }
+
+      await field('recipe-servings', '4');
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('ingredient-amount-0')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('ingredient-amount-0')),
+            )
+            .controller!
+            .text,
+        '200',
+      );
+      await field('ingredient-amount-0', '300');
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('recipe-steps')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      final controller = tester
+          .widget<TextFormField>(find.byKey(const ValueKey('recipe-steps')))
+          .controller!;
+      expect(controller.text, 'Gare ⟦300 g Reis⟧.');
+      await tester.scrollUntilVisible(
+        find.text('Rezept speichern'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Rezept speichern'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rezept speichern'));
+      await tester.pumpAndSettle();
+      expect(store.payload!['steps'], ['Gare {{ingredient:stable}}.']);
+      expect(store.payload!['image_url'], 'assets/images/pasta.jpg');
+      expect((store.payload!['ingredients'] as List).single['quantity'], 300);
+      expect(
+        (store.payload!['ingredients'] as List).single['step_key'],
+        'stable',
+      );
+      expect(store.payload!['servings'], 4);
     },
   );
   testWidgets('Fehlgeschlagenes Laden der Zutaten kann wiederholt werden', (
@@ -215,6 +413,11 @@ void main() {
     store.ingredientLoadFails = false;
     await tester.tap(find.text('Zutaten erneut laden'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('recipe-name')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.byKey(const ValueKey('recipe-name')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

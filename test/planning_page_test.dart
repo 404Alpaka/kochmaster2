@@ -52,6 +52,10 @@ void main() {
       expect(store.rows.length, 1);
       await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
+      if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Selbst einkaufen').last);
+        await tester.pumpAndSettle();
+      }
       final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
       await reveal(tester, tomato);
       await tester.pumpAndSettle();
@@ -63,6 +67,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
+      if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Selbst einkaufen').last);
+        await tester.pumpAndSettle();
+      }
       await reveal(tester, tomato);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
@@ -83,6 +91,10 @@ void main() {
       expect(find.text('3 Portionen'), findsOneWidget);
       await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
+      if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Selbst einkaufen').last);
+        await tester.pumpAndSettle();
+      }
       await reveal(tester, tomato);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
@@ -103,6 +115,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Korb'));
       await tester.pumpAndSettle();
+      if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Selbst einkaufen').last);
+        await tester.pumpAndSettle();
+      }
       final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
       await reveal(tester, tomato);
       await tester.pumpAndSettle();

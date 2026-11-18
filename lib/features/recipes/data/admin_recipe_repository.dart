@@ -36,9 +36,7 @@ class SupabaseAdminRecipeRepository implements AdminRecipeRepository {
     for (var offset = 0; ; offset += 200) {
       final rows = await client
           .from('recipes')
-          .select(
-            'id,name,prep_minutes,servings,steps,is_published,deleted_at,recipe_ingredients(ingredient_id,quantity,unit,ingredients(name))',
-          )
+          .select('*,recipe_ingredients(*,ingredients(name))')
           .order('id')
           .range(offset, offset + 199)
           .timeout(const Duration(seconds: 15));

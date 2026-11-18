@@ -20,8 +20,8 @@ Einkaufsstatus der Woche zurück, weil sich die benötigten Mengen ändern.
 
 RLS erlaubt SELECT, INSERT und UPDATE ausschließlich mit `auth.uid() = user_id`;
 anonyme Nutzer haben keinen Zugriff. Gleichzeitiges Bearbeiten in mehreren Tabs
-verwendet vorläufig den zuletzt gespeicherten Wochenstand. Haushaltsfreigaben und
-Konfliktauflösung sind noch nicht enthalten.
+verwendet vorläufig den zuletzt gespeicherten Wochenstand. Private Wochenpläne besitzen noch keinen Versionsvergleich. Die neue Haushaltsanbindung
+und kontoweite persönliche Daten sind in [households.md](households.md) beschrieben.
 
 ## Nachweise
 

@@ -34,6 +34,7 @@ extension _CookingViews on _PlanningPageState {
   List<IngredientAmount> get cookingIngredients => buildShoppingList([PlannedMeal(cookingRecipe!, cookingPortions)]);
 
   Future<void> openCooking(Recipe recipe, {required int portions, int? day}) async {
+    if(readOnlyShared) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Dieser Haushalt ist für dich nur lesbar.'))); return; }
     final date = day == null ? pantryToday : week.add(Duration(days: day));
     final key = '${dateKey(date)}:${recipe.id}';
     if (cookingRecipe != null && cookingKey == key && !cookedEntries.contains(key)) { update(() => cookingPage = 1); return; }
@@ -78,7 +79,7 @@ extension _CookingViews on _PlanningPageState {
       section('Das brauchst du'),
       for (final i in cookingIngredients) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${amountLabel(i.quantity, i.unit)} ${i.name}')),
     ]), padding: const EdgeInsets.all(16)), gap(18),
-    for (var i = 0; i < cookingRecipe!.steps.length; i++) TextButton(style: TextButton.styleFrom(alignment: Alignment.centerLeft), onPressed: cookedEntries.contains(cookingKey) ? null : () => update(() { cookingStep = i; cookingPage = 2; }), child: Text('${i + 1}  ${cookingRecipe!.steps[i]}')),
+    for (var i = 0; i < cookingRecipe!.steps.length; i++) TextButton(style: TextButton.styleFrom(alignment: Alignment.centerLeft), onPressed: cookedEntries.contains(cookingKey) ? null : () => update(() { cookingStep = i; cookingPage = 2; }), child: Text('${i + 1}  ${renderRecipeStep(cookingRecipe!, cookingRecipe!.steps[i], portions: cookingPortions)}')),
     if (cookingRecipe!.steps.isEmpty) Text('Für dieses Gericht sind noch keine Zubereitungsschritte hinterlegt.', style: muted), gap(14),
     Text('Rezepttexte bleiben unverändert. Mengenangaben innerhalb eines Kochschritts beziehen sich gegebenenfalls auf die Originalportionen; maßgeblich ist deine skalierte Zutatenliste.', style: muted),
     if (cookingTimers.isNotEmpty) ...[gap(14), ...cookingTimerCards()],
@@ -102,7 +103,7 @@ extension _CookingViews on _PlanningPageState {
   }
 
   List<Widget> cookingStepView() {
-    final steps = cookingRecipe!.steps;
+    final steps = renderedRecipeSteps(cookingRecipe!, portions: cookingPortions);
     if (steps.isEmpty) return cookingOverview();
     final timer = stepTimer(cookingStep);
     return [

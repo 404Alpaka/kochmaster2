@@ -17,9 +17,17 @@ import '../../auth/presentation/account_page.dart';
 import '../data/weekly_plan_repository.dart';
 import '../domain/meal_plan.dart';
 import '../../recipes/domain/recipe.dart';
+import '../../recipes/presentation/recipe_image.dart';
+import '../../account_data/data/account_data_repository.dart';
+import '../../households/data/household_repository.dart';
+
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+
 import '../../shopping/domain/build_shopping_list.dart';
 
 part 'mise_views.dart';
+part 'account_sync.dart';
+part 'connected_household_views.dart';
 part 'planning_survey.dart';
 part 'planning_budget_demo.dart';
 part 'planning_proposal.dart';
@@ -53,7 +61,12 @@ class PlanningPage extends StatefulWidget {
 class _PlanningPageState extends State<PlanningPage> {
   List<Recipe>? refreshedCatalog;
   bool admin = false;
-  List<Recipe> get recipes => [...(refreshedCatalog ?? widget.recipes), ...personalRecipes.map((r) => recipeFromSnapshot(Map<String, dynamic>.from(r['recipe'] as Map)))];
+  List<Recipe> get recipes => [
+    ...(refreshedCatalog ?? widget.recipes),
+    ...personalRecipes.map(
+      (r) => recipeFromSnapshot(Map<String, dynamic>.from(r['recipe'] as Map)),
+    ),
+  ];
   final personalRecipes = <Map<String, dynamic>>[];
   int collectionPage = 0;
   final collectionFilters = <String>{};
@@ -192,99 +205,182 @@ class _PlanningPageState extends State<PlanningPage> {
     'Zusammen schmeckt der Alltag besser.',
   ];
 
+  bool get accountConnected => widget.client != null && widget.user != null;
+  AccountDataRepository? accountRepository;
+  HouseholdRepository? householdRepository;
+  List<ConnectedHousehold> connectedHouseholds = [];
+  String? activeHouseholdId;
+  ConnectedHousehold? get activeHousehold {
+    for (final household in connectedHouseholds) {
+      if (household.id == activeHouseholdId) return household;
+    }
+    return null;
+  }
+
+  bool get readOnlyShared => activeHousehold?.role == 'viewer';
+  HouseholdWeeklyPlanRepository? sharedWeekRepository;
+  WeeklyPlanRepository? get weekRepository =>
+      sharedWeekRepository ?? widget.store;
+  Map<String, dynamic> personalCloudData = {};
+  Map<String, dynamic> defaultAccountData = {};
+  Map<String, dynamic> lastSharedData = {};
+  int personalRevision = 0;
+  int sharedRevision = 0;
+  bool accountLoading = false;
+  bool accountReady = false;
+  String? accountError;
+  int accountPending = 0;
+  Future<void> accountSaveTail = Future.value();
+  bool householdBusy = false;
+  String? householdError;
+
   String get preferencesKey => 'mise-preferences-${widget.user?.id ?? 'guest'}';
 
   void update(VoidCallback change) => setState(change);
 
+  Map<String, dynamic> preferencesData() => {
+    'activeHouseholdId': activeHouseholdId,
+    'rememberedRecipes': rememberedRecipes.toList(),
+    'favoriteRecipes': favoriteRecipes.toList(),
+    'hiddenRecipes': hiddenRecipes.toList(),
+    'planBudget': planBudget,
+    'planBudgetInitialized': planBudgetInitialized,
+    'budget': budget,
+    'weeklyExpenses': weeklyExpenses,
+    'weeklyReviews': weeklyReviews,
+    'nextWeekHints': nextWeekHints,
+    'cookingHistory': cookingHistory,
+    'household': householdName,
+    'householdDemoJoined': householdDemoJoined,
+    'demoAlexRole': demoAlexRole,
+    'householdInvitations': householdInvitations,
+    'servings': servings,
+    'preferences': preferences,
+    'personalExclusions': personalExclusions.toList(),
+    'personalDislikes': personalDislikes.toList(),
+    'pantry': pantry,
+    'personalRecipes': personalRecipes,
+    'cookedEntries': cookedEntries.toList(),
+    'preparedMeals': preparedMeals,
+    'survey': {
+      'completed': surveyCompleted,
+      'exclusions': exclusions.toList(),
+      'diet': diet,
+      'days': planningDays,
+      'minutes': maxMinutes,
+      'startDay': startDay,
+    },
+  };
+
   void savePreferences() {
-    writeSession(
-      preferencesKey,
-      jsonEncode({
-        'rememberedRecipes': rememberedRecipes.toList(),
-        'favoriteRecipes': favoriteRecipes.toList(),
-        'hiddenRecipes': hiddenRecipes.toList(),
-        'planBudget': planBudget,
-        'planBudgetInitialized': planBudgetInitialized,
-        'budget': budget,
-        'weeklyExpenses': weeklyExpenses,
-        'weeklyReviews': weeklyReviews,
-        'nextWeekHints': nextWeekHints,
-        'cookingHistory': cookingHistory,
-        'household': householdName,
-        'householdDemoJoined': householdDemoJoined,
-        'demoAlexRole': demoAlexRole,
-        'householdInvitations': householdInvitations,
-        'servings': servings,
-        'preferences': preferences,
-        'personalExclusions': personalExclusions.toList(),
-        'personalDislikes': personalDislikes.toList(),
-        'pantry': pantry,
-        'personalRecipes': personalRecipes,
-        'cookedEntries': cookedEntries.toList(),
-        'preparedMeals': preparedMeals,
-        'survey': {
-          'completed': surveyCompleted,
-          'exclusions': exclusions.toList(),
-          'diet': diet,
-          'days': planningDays,
-          'minutes': maxMinutes,
-          'startDay': startDay,
-        },
-      }),
-    );
+    final data = preferencesData();
+    if (!accountConnected) {
+      writeSession(preferencesKey, jsonEncode(data));
+      return;
+    }
+    if (!accountReady || accountLoading || accountError != null) return;
+    queueAccountSave(data);
   }
 
   void restorePreferences() {
     try {
       final raw = readSession(preferencesKey);
       if (raw == null) return;
-      final data = jsonDecode(raw) as Map<String, dynamic>;
-      rememberedRecipes.addAll(
-        List<String>.from(data['rememberedRecipes'] as List? ?? []),
-      );
-      favoriteRecipes.addAll(
-        List<String>.from(data['favoriteRecipes'] as List? ?? []),
-      );
-      hiddenRecipes.addAll(
-        List<String>.from(data['hiddenRecipes'] as List? ?? []),
-      );
-      planBudget = (data['planBudget'] as num?)?.toDouble();
-      planBudgetInitialized = data['planBudgetInitialized'] == true;
-      budget = (data['budget'] as num?)?.toDouble() ?? 75;
-      weeklyReviews.addAll((data['weeklyReviews'] as Map<String, dynamic>? ?? {}).map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map))));
-      nextWeekHints.addAll((data['nextWeekHints'] as Map<String, dynamic>? ?? {}).map((k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map))));
-      cookingHistory.addAll((data['cookingHistory'] as List? ?? []).map((v) => Map<String, dynamic>.from(v as Map)));
-      final storedExpenses =
-          data['weeklyExpenses'] as Map<String, dynamic>? ?? {};
-      weeklyExpenses.addAll(
-        storedExpenses.map(
-          (key, value) => MapEntry(key, (value as num).toDouble()),
-        ),
-      );
-      householdDemoJoined = data['householdDemoJoined'] as bool? ?? true;
-      demoAlexRole = data['demoAlexRole'] as String? ?? 'Mitglied';
-      householdInvitations.addAll((data['householdInvitations'] as List? ?? []).map((v) => Map<String, dynamic>.from(v as Map)));
-      householdName = data['household'] as String? ?? 'Zuhause';
-      servings = data['servings'] as int? ?? 2;
-      personalExclusions.addAll(List<String>.from(data['personalExclusions'] as List? ?? []));
-      personalDislikes.addAll(List<String>.from(data['personalDislikes'] as List? ?? []));
-      preferences = data['preferences'] as String? ?? preferences;
-      final survey = data['survey'] as Map<String, dynamic>? ?? {};
-      surveyCompleted = survey['completed'] == true;
-      exclusions.addAll(List<String>.from(survey['exclusions'] as List? ?? []));
-      diet = survey['diet'] as String? ?? diet;
-      planningDays = (survey['days'] as int? ?? 7).clamp(1, 7);
-      maxMinutes = survey['minutes'] as int? ?? 30;
-      startDay = (survey['startDay'] as int? ?? 0).clamp(0, 6);
-      cookedEntries.addAll(List<String>.from(data['cookedEntries'] as List? ?? []));
-      preparedMeals.addAll((data['preparedMeals'] as List? ?? []).map((p) => Map<String, dynamic>.from(p as Map)));
-      personalRecipes.addAll((data['personalRecipes'] as List? ?? []).map((r) => Map<String, dynamic>.from(r as Map)));
-      pantry = (data['pantry'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      applyPreferences(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
-      /* Invalid local preferences fall back to their defaults. */
+      /* Invalid browser data stays local. */
     }
+  }
+
+  void applyPreferences(Map<String, dynamic> data) {
+    rememberedRecipes.clear();
+    favoriteRecipes.clear();
+    hiddenRecipes.clear();
+    weeklyReviews.clear();
+    nextWeekHints.clear();
+    cookingHistory.clear();
+    weeklyExpenses.clear();
+    householdInvitations.clear();
+    personalExclusions.clear();
+    personalDislikes.clear();
+    exclusions.clear();
+    cookedEntries.clear();
+    preparedMeals.clear();
+    personalRecipes.clear();
+
+    rememberedRecipes.addAll(
+      List<String>.from(data['rememberedRecipes'] as List? ?? []),
+    );
+    favoriteRecipes.addAll(
+      List<String>.from(data['favoriteRecipes'] as List? ?? []),
+    );
+    hiddenRecipes.addAll(
+      List<String>.from(data['hiddenRecipes'] as List? ?? []),
+    );
+    planBudget = (data['planBudget'] as num?)?.toDouble();
+    planBudgetInitialized = data['planBudgetInitialized'] == true;
+    budget = (data['budget'] as num?)?.toDouble() ?? 75;
+    weeklyReviews.addAll(
+      (data['weeklyReviews'] as Map<String, dynamic>? ?? {}).map(
+        (k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map)),
+      ),
+    );
+    nextWeekHints.addAll(
+      (data['nextWeekHints'] as Map<String, dynamic>? ?? {}).map(
+        (k, v) => MapEntry(k, Map<String, dynamic>.from(v as Map)),
+      ),
+    );
+    cookingHistory.addAll(
+      (data['cookingHistory'] as List? ?? []).map(
+        (v) => Map<String, dynamic>.from(v as Map),
+      ),
+    );
+    final storedExpenses =
+        data['weeklyExpenses'] as Map<String, dynamic>? ?? {};
+    weeklyExpenses.addAll(
+      storedExpenses.map(
+        (key, value) => MapEntry(key, (value as num).toDouble()),
+      ),
+    );
+    householdDemoJoined = data['householdDemoJoined'] as bool? ?? true;
+    demoAlexRole = data['demoAlexRole'] as String? ?? 'Mitglied';
+    householdInvitations.addAll(
+      (data['householdInvitations'] as List? ?? []).map(
+        (v) => Map<String, dynamic>.from(v as Map),
+      ),
+    );
+    householdName = data['household'] as String? ?? 'Zuhause';
+    servings = data['servings'] as int? ?? 2;
+    personalExclusions.addAll(
+      List<String>.from(data['personalExclusions'] as List? ?? []),
+    );
+    personalDislikes.addAll(
+      List<String>.from(data['personalDislikes'] as List? ?? []),
+    );
+    preferences = data['preferences'] as String? ?? preferences;
+    final survey = data['survey'] as Map<String, dynamic>? ?? {};
+    surveyCompleted = survey['completed'] == true;
+    exclusions.addAll(List<String>.from(survey['exclusions'] as List? ?? []));
+    diet = survey['diet'] as String? ?? diet;
+    planningDays = (survey['days'] as int? ?? 7).clamp(1, 7);
+    maxMinutes = survey['minutes'] as int? ?? 30;
+    startDay = (survey['startDay'] as int? ?? 0).clamp(0, 6);
+    cookedEntries.addAll(
+      List<String>.from(data['cookedEntries'] as List? ?? []),
+    );
+    preparedMeals.addAll(
+      (data['preparedMeals'] as List? ?? []).map(
+        (p) => Map<String, dynamic>.from(p as Map),
+      ),
+    );
+    personalRecipes.addAll(
+      (data['personalRecipes'] as List? ?? []).map(
+        (r) => Map<String, dynamic>.from(r as Map),
+      ),
+    );
+    pantry = (data['pantry'] as List? ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
   @override
@@ -304,13 +400,23 @@ class _PlanningPageState extends State<PlanningPage> {
   @override
   void initState() {
     super.initState();
+    final invitation = Uri.base.queryParameters['household_invite'];
+    if (invitation != null)
+      writeSession('mise-pending-household-invite', invitation);
+    defaultAccountData =
+        jsonDecode(jsonEncode(preferencesData())) as Map<String, dynamic>;
     restorePreferences();
+    personalCloudData = copyAccountData(preferencesData());
     sayingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       if (mounted && tab == 0) {
         setState(() => saying = (saying + 1) % sayings.length);
       }
     });
-    if (widget.store != null) loadWeek();
+    if (accountConnected) {
+      initializeAccountData();
+    } else if (weekRepository != null) {
+      loadWeek();
+    }
     if (widget.user != null) checkAdmin();
   }
 
@@ -358,7 +464,7 @@ class _PlanningPageState extends State<PlanningPage> {
       saveError = null;
     });
     try {
-      final result = await widget.store!.load(week, recipes);
+      final result = await weekRepository!.load(week, recipes);
       if (!mounted) return;
       setState(() {
         saved = true;
@@ -406,13 +512,19 @@ class _PlanningPageState extends State<PlanningPage> {
     Map<int, PlannedMeal> nextPlan,
     Set<(String, String)> nextChecked,
   ) async {
-    if (saving || loading || loadError != null) return false;
+    if (readOnlyShared ||
+        (accountConnected && (!accountReady || accountError != null)) ||
+        saving ||
+        loading ||
+        loadError != null) {
+      return false;
+    }
     setState(() {
       saving = true;
       saveError = null;
     });
     try {
-      await widget.store?.save(
+      await weekRepository?.save(
         week,
         WeeklyPlan(meals: nextPlan, checked: nextChecked),
       );
@@ -450,7 +562,10 @@ class _PlanningPageState extends State<PlanningPage> {
 
   Future<void> changeWeek(int delta) async {
     if (saving || loading) return;
-    localWeekCache[dateKey(week)] = WeeklyPlan(meals: Map<int, PlannedMeal>.from(plan), checked: Set<(String, String)>.from(checked));
+    localWeekCache[dateKey(week)] = WeeklyPlan(
+      meals: Map<int, PlannedMeal>.from(plan),
+      checked: Set<(String, String)>.from(checked),
+    );
     setState(() {
       week = DateTime(week.year, week.month, week.day + delta * 7);
       draft = null;
@@ -459,14 +574,28 @@ class _PlanningPageState extends State<PlanningPage> {
       plan.clear();
       checked.clear();
     });
-    if (widget.store != null) { await loadWeek(); }
-    else {
+    if (weekRepository != null) {
+      await loadWeek();
+    } else {
       final cached = localWeekCache[dateKey(week)];
-      if (cached != null) update(() { plan.addAll(cached.meals); checked.addAll(cached.checked); });
+      if (cached != null) {
+        update(() {
+          plan.addAll(cached.meals);
+          checked.addAll(cached.checked);
+        });
+      }
     }
   }
 
   Future<void> addRecipe(Recipe recipe, {int? portions}) async {
+    if (readOnlyShared) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Dieser Haushalt ist für dich nur lesbar.'),
+        ),
+      );
+      return;
+    }
     if (widget.client != null && widget.user == null) {
       await account();
       return;
@@ -502,15 +631,31 @@ class _PlanningPageState extends State<PlanningPage> {
 
   Future<void> adjustServings(int day, int delta) async {
     final meal = plan[day];
-    if (meal == null || meal.servings + delta < 1 || meal.preparedConsumed) return;
+    if (meal == null || meal.servings + delta < 1 || meal.preparedConsumed) {
+      return;
+    }
     if (meal.preparedMealId != null) {
       final stored = findPreparedMeal(meal.preparedMealId!);
-      if (stored == null || meal.servings + delta > preparedAvailable(stored, exceptDate: dateKey(week.add(Duration(days: day))))) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nicht genug freie Portionen vorhanden.'))); return;
+      if (stored == null ||
+          meal.servings + delta >
+              preparedAvailable(
+                stored,
+                exceptDate: dateKey(week.add(Duration(days: day))),
+              )) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nicht genug freie Portionen vorhanden.'),
+          ),
+        );
+        return;
       }
     }
     final next = Map<int, PlannedMeal>.from(plan)
-      ..[day] = PlannedMeal(meal.recipe, meal.servings + delta, preparedMealId: meal.preparedMealId);
+      ..[day] = PlannedMeal(
+        meal.recipe,
+        meal.servings + delta,
+        preparedMealId: meal.preparedMealId,
+      );
     await saveMeals(next);
   }
 
@@ -523,5 +668,6 @@ class _PlanningPageState extends State<PlanningPage> {
   });
 
   @override
-  Widget build(BuildContext context) => miseScaffold();
+  Widget build(BuildContext context) =>
+      accountConnected ? accountDataScaffold() : miseScaffold();
 }

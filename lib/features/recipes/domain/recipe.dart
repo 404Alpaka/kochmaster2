@@ -5,13 +5,27 @@ class IngredientAmount {
     this.ingredientId,
     this.name,
     this.quantity,
-    this.unit,
-  );
+    this.unit, {
+    this.stepKey,
+  });
   final String ingredientId;
   final String name;
   final double quantity;
   final String unit;
+  final String? stepKey;
+  String get referenceKey =>
+      stepKey ?? Uri.encodeComponent('$ingredientId|$unit');
 }
+
+const planningAllergens = [
+  'Milch',
+  'Eier',
+  'Erdnüsse',
+  'Schalenfrüchte',
+  'Gluten',
+  'Soja',
+];
+const planningDiets = ['Vegetarisch', 'Vegan'];
 
 class Recipe {
   const Recipe({
@@ -21,11 +35,13 @@ class Recipe {
     required this.servings,
     required this.ingredients,
     required this.steps,
+    this.imageUrl,
     this.verifiedAllergens,
     this.verifiedDiets,
   });
   final String id;
   final String name;
+  final String? imageUrl;
   final int minutes;
   final int servings;
   final List<IngredientAmount> ingredients;
@@ -46,6 +62,7 @@ Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
   'minutes': recipe.minutes,
   'servings': recipe.servings,
   'steps': recipe.steps,
+  'image_url': recipe.imageUrl,
   'verified_allergens': recipe.verifiedAllergens?.toList(),
   'verified_diets': recipe.verifiedDiets?.toList(),
   'ingredients': [
@@ -55,6 +72,7 @@ Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
         'name': item.name,
         'quantity': item.quantity,
         'unit': item.unit,
+        'step_key': item.stepKey,
       },
   ],
 };
@@ -64,6 +82,7 @@ Recipe recipeFromSnapshot(Map<String, dynamic> data) => Recipe(
   minutes: data['minutes'] as int,
   servings: data['servings'] as int,
   steps: List<String>.from(data['steps'] as List),
+  imageUrl: data['image_url'] as String?,
   verifiedAllergens: (data['verified_allergens'] as List?)
       ?.cast<String>()
       .toSet(),
@@ -75,7 +94,43 @@ Recipe recipeFromSnapshot(Map<String, dynamic> data) => Recipe(
           item['name'] as String,
           (item['quantity'] as num).toDouble(),
           item['unit'] as String,
+          stepKey: item['step_key'] as String?,
         ),
       )
       .toList(),
 );
+
+/// Unknown or free-form restrictions never imply a reviewed match.
+bool matchesVerifiedRestrictions(
+  Recipe recipe,
+  String diet,
+  Set<String> exclusions,
+) {
+  if (diet != 'Ohne Einschränkung' &&
+      !(recipe.verifiedDiets?.contains(diet) ?? false)) {
+    return false;
+  }
+  if (exclusions.isEmpty) return true;
+  return planningAllergens.toSet().containsAll(exclusions) &&
+      recipe.verifiedAllergens != null &&
+      recipe.verifiedAllergens!.intersection(exclusions).isEmpty;
+}
+
+String ingredientToken(String key) => '{{ingredient:$key}}';
+String ingredientText(IngredientAmount item, double factor) =>
+    '${(item.quantity * factor).toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '').replaceAll('.', ',')} ${item.unit} ${item.name}';
+String renderRecipeStep(Recipe recipe, String step, {int? portions}) =>
+    step.replaceAllMapped(RegExp(r'\{\{ingredient:([^}]+)\}\}'), (match) {
+      for (final item in recipe.ingredients) {
+        if (item.referenceKey == match[1]) {
+          return ingredientText(
+            item,
+            (portions ?? recipe.servings) / recipe.servings,
+          );
+        }
+      }
+      return '[Zutat entfernt]';
+    });
+List<String> renderedRecipeSteps(Recipe recipe, {int? portions}) => recipe.steps
+    .map((s) => renderRecipeStep(recipe, s, portions: portions))
+    .toList();

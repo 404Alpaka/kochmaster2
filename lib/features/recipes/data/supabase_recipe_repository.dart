@@ -10,9 +10,7 @@ class SupabaseRecipeRepository implements RecipeRepository {
   Future<List<Recipe>> getAll() async {
     final rows = await client
         .from('recipes')
-        .select(
-          'id,name,prep_minutes,servings,steps,recipe_ingredients(ingredient_id,quantity,unit,ingredients(name))',
-        )
+        .select('*,recipe_ingredients(*,ingredients(name))')
         .eq('is_published', true)
         .isFilter('deleted_at', null)
         .order('name')
@@ -28,6 +26,11 @@ Recipe recipeFromRow(Map<String, dynamic> row) => Recipe(
   minutes: row['prep_minutes'] as int,
   servings: row['servings'] as int,
   steps: List<String>.from(row['steps'] as List),
+  imageUrl: row['image_url'] as String?,
+  verifiedAllergens: (row['verified_allergens'] as List?)
+      ?.cast<String>()
+      .toSet(),
+  verifiedDiets: (row['verified_diets'] as List?)?.cast<String>().toSet(),
   ingredients: (row['recipe_ingredients'] as List).map((value) {
     final item = value as Map<String, dynamic>;
     final ingredient = item['ingredients'] as Map<String, dynamic>;
@@ -36,6 +39,7 @@ Recipe recipeFromRow(Map<String, dynamic> row) => Recipe(
       ingredient['name'] as String,
       (item['quantity'] as num).toDouble(),
       item['unit'] as String,
+      stepKey: item['step_key'] as String?,
     );
   }).toList(),
 );

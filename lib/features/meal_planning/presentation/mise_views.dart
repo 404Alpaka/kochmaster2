@@ -68,12 +68,13 @@ extension _MiseViews on _PlanningPageState {
                 ...openedRecipe == null
                     ? collectionPage == 0 ? recipeView() : recipeCollectionFlow()
                     : recipeDetail(openedRecipe!),
-              if (tab == 1) ...[
+              if(readOnlyShared && tab>=1 && tab<=3) ...sharedReadOnlyFlow(),
+              if (!readOnlyShared && tab == 1) ...[
                 if (nextWeekHints.containsKey(dateKey(week))) ...[surveyCard('Deine Wünsche für diese Woche', nextWeekHints[dateKey(week)]!['note'] as String? ?? '', color: AppColors.softGreen), gap(14), if (nextWeekHints[dateKey(week)]!['checkPrepared'] == true) ...[recipeAction('Vorhandene Mahlzeiten prüfen →', false, openPreparedMeals), gap(14)]],
                 ...planningFlow(),
               ],
-              if (tab == 2) ...pantryFlow(),
-              if (tab == 3) ...shoppingFlow(),
+              if (!readOnlyShared && tab == 2) ...pantryFlow(),
+              if (!readOnlyShared && tab == 3) ...shoppingFlow(),
               if (tab == 4) ...householdFlow(),
               ],
               gap(24),
@@ -100,10 +101,10 @@ extension _MiseViews on _PlanningPageState {
         if (cookingPage > 0) cookingActionBar(),
         if (cookingPage == 0) ...[
         if (tab == 0 && collectionPage > 0 && openedRecipe == null) recipeCollectionActionBar(),
-        if (showPlanningAction) planningActionBar(),
-        if (showProposalAction) proposalActionBar(),
-        if (tab == 3 && shoppingPage != 1) shoppingActionBar(),
-        if (tab == 2 && pantryPage != 0) pantryActionBar(),
+        if (!readOnlyShared && showPlanningAction) planningActionBar(),
+        if (!readOnlyShared && showProposalAction) proposalActionBar(),
+        if (!readOnlyShared && tab == 3 && shoppingPage != 1) shoppingActionBar(),
+        if (!readOnlyShared && tab == 2 && pantryPage != 0) pantryActionBar(),
         if (tab == 4 && householdPage > 0 && (householdDemoJoined || householdPage >= 5)) householdActionBar(),
         ],
         SafeArea(
@@ -550,26 +551,7 @@ extension _MiseViews on _PlanningPageState {
         child: Text(label, style: const TextStyle(fontSize: 14)),
       );
 
-  String recipeImage(Recipe recipe) {
-    final name = recipe.name.toLowerCase();
-    return name.contains('pasta') || name.contains('nudeln')
-        ? 'assets/images/pasta.jpg'
-        : 'assets/images/rice.jpg';
-  }
-
-  Widget recipePhoto(Recipe recipe, {required double height}) => Image.asset(
-    recipeImage(recipe),
-    height: height,
-    width: double.infinity,
-    fit: BoxFit.cover,
-    semanticLabel: 'Serviervorschlag für ${recipe.name}',
-    errorBuilder: (context, error, stack) => Container(
-      height: height,
-      color: AppColors.softGreen,
-      alignment: Alignment.center,
-      child: const Icon(Icons.restaurant_outlined, size: 48),
-    ),
-  );
+  Widget recipePhoto(Recipe recipe, {required double height}) => RecipeImage(recipeImageSource(recipe), height: height, semanticLabel: 'Rezeptbild für ${recipe.name}');
 
   List<Widget> recipeDetail(Recipe recipe) {
     final inStock = recipe.ingredients
@@ -720,7 +702,7 @@ extension _MiseViews on _PlanningPageState {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(recipe.steps[i], style: muted)),
+                    Expanded(child: Text(renderRecipeStep(recipe, recipe.steps[i], portions: detailServings), style: muted)),
                   ],
                 ),
               ),

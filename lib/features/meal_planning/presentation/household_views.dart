@@ -1,7 +1,7 @@
 part of 'planning_page.dart';
 
 extension _HouseholdViews on _PlanningPageState {
-  List<Widget> householdFlow() => switch (householdPage) {
+  List<Widget> householdFlow() => widget.client != null && widget.user == null ? [title('Zusammen planen.'), gap(16), surveyCard('Mit deinem Konto verbinden', 'Melde dich an, um einen echten Haushalt zu erstellen oder eine Einladung anzunehmen.'), gap(16), primary('Anmelden oder registrieren', account)] : accountConnected && (householdPage < 7 || readOnlyShared) ? connectedHouseholdView() : switch (householdPage) {
     1 => householdMembersView(), 2 => householdInviteView(), 3 => householdRoleView(),
     4 => householdLeaveView(), 5 => householdPreferencesView(), 6 => householdMealsView(),
     11 => weeklyReviewView(), 12 => weeklyReviewEditor(), 13 => weeklyReviewNextView(),
@@ -155,7 +155,7 @@ extension _HouseholdViews on _PlanningPageState {
     final total = firstHouseholdPortions + secondHouseholdPortions;
     // Store a combined meal snapshot so existing week persistence and shopping aggregation remain compatible.
     final combined = Recipe(id: 'household-${dateKey(week)}-$householdMealDay', name: meals.map((m) => m.recipe.name).toSet().join(' + '), minutes: meals.map((m) => m.recipe.minutes).reduce((a, b) => a > b ? a : b), servings: total,
-      ingredients: ingredients, steps: [for (final m in meals) ...['${m.recipe.name} · ${m.servings} Portionen', ...m.recipe.steps]],
+      ingredients: ingredients, steps: [for (final m in meals) ...['${m.recipe.name} · ${m.servings} Portionen', ...renderedRecipeSteps(m.recipe, portions: m.servings)]],
       verifiedAllergens: meals.every((m) => m.recipe.verifiedAllergens != null) ? {for (final m in meals) ...m.recipe.verifiedAllergens!} : null,
       verifiedDiets: meals.every((m) => m.recipe.verifiedDiets != null) ? meals.first.recipe.verifiedDiets!.where((d) => meals.every((m) => m.recipe.verifiedDiets!.contains(d))).toSet() : null);
     if (!await saveMeals({...plan, householdMealDay: PlannedMeal(combined, total)}) || !mounted) return;
@@ -175,6 +175,8 @@ extension _HouseholdViews on _PlanningPageState {
   }
 
   Widget householdActionBar() {
+    if(widget.client != null && widget.user == null) return const SizedBox.shrink();
+    if(accountConnected && (householdPage < 7 || readOnlyShared)) return const SizedBox.shrink();
     if (householdPage >= 11) return weeklyReviewActionBar();
     if (householdPage >= 7) return rulesActionBar();
     final label = switch (householdPage) { 1 => 'Mitglied einladen +', 2 => 'Einladungsentwurf speichern', 3 => 'Rolle für Alex speichern', 4 => 'Demo-Haushalt verlassen', 5 => 'Gemeinsame Planregeln bearbeiten', _ => 'Portionen & Budget prüfen' };

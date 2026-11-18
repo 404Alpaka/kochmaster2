@@ -40,3 +40,7 @@ Konten: Registrierung mit E-Mail-Bestätigung, Anmeldung und Abmeldung.
 Die Web-Sitzung wird beim Neustart wiederhergestellt.
 Details und Testumfang: [docs/accounts.md](docs/accounts.md).
 
+
+Kontoweite persönliche Daten und echte Haushalte: [docs/households.md](docs/households.md).
+Vor Nutzung die Migration `202611170003_account_data_and_households.sql` anwenden.
+Haushalte teilen Plan, Einkauf und Vorrat; persönliche Favoriten und Regeln bleiben privat.

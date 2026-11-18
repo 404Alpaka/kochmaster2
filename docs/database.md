@@ -1,8 +1,8 @@
 # Supabase einrichten
 
-Aktueller Umfang: veröffentlichte Rezepte und Zutaten lesen. Pläne und abgehakte
-Einkaufspositionen bleiben lokal im Arbeitsspeicher. Nutzer und Haushaltsrechte
-werden vor deren Cloudspeicherung ergänzt.
+Veröffentlichte Rezepte und Zutaten kommen aus Supabase. Private Wochenpläne
+und Einkaufsstatus liegen in `user_week_plans`. Kontodaten und echte Haushalte
+benötigen die zusätzliche Migration aus [households.md](households.md).
 
 1. Unter https://supabase.com/dashboard ein Entwicklungsprojekt erstellen.
    Datenbankpasswort sicher speichern; eine passende EU-Region wählen.

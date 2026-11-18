@@ -26,7 +26,7 @@ extension _HouseholdRules on _PlanningPageState {
       if (personalExclusions.isEmpty) Text('Keine persönlichen Allergien oder Unverträglichkeiten hinterlegt.', style: muted),
       for (final rule in personalExclusions) ListTile(contentPadding: EdgeInsets.zero, title: Text(rule), trailing: const Icon(Icons.chevron_right), onTap: () => openRuleEditor(rule: rule, personal: true)),
       recipeAction('Meine Allergien & Unverträglichkeiten', false, () => openRuleEditor(personal: true)), gap(14),
-      Text('Alex · Beispielprofil. Persönliche Gesundheitsregeln anderer Mitglieder werden hier nicht bearbeitet.', style: muted),
+      Text(accountConnected ? 'Persönliche Regeln anderer Mitglieder bleiben privat.' : 'Alex · Beispielprofil. Persönliche Gesundheitsregeln anderer Mitglieder werden hier nicht bearbeitet.', style: muted),
     ]), padding: const EdgeInsets.all(16)), gap(18),
     panel(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       section('Abneigungen · nicht medizinisch'),
@@ -109,7 +109,7 @@ extension _HouseholdRules on _PlanningPageState {
     TextFormField(key: ValueKey('dislike-$originalDislike'), initialValue: dislikeName, decoration: InputDecoration(labelText: 'Zutat oder Zutatengruppe', hintText: 'z. B. Pilze', errorText: ruleError), onChanged: (v) => dislikeName = v), gap(18),
     surveyChoice('Andere Zutaten bevorzugen', dislikeActive, () => update(() => dislikeActive = true), subtitle: 'Passende Gerichte mit dieser Zutat nachrangig behandeln, aber nicht fest ausschließen.'), gap(14),
     surveyChoice('Wieder neutral bewerten', !dislikeActive, () => update(() => dislikeActive = false), subtitle: 'Diese Zutat nicht mehr nachrangig behandeln.'), gap(18),
-    surveyCard('✓ Berücksichtigen, wenn ich mitesse', 'Bei getrennten Gerichten verändert deine Abneigung nicht automatisch die Auswahl für Alex. Der Abgleich erfolgt anhand der Zutaten- und Rezeptnamen.', color: AppColors.softGreen), gap(18),
+    surveyCard('✓ Berücksichtigen, wenn ich mitesse', 'Bei getrennten Gerichten verändert deine Abneigung nicht automatisch die Auswahl anderer Personen. Der Abgleich erfolgt anhand der Zutaten- und Rezeptnamen.', color: AppColors.softGreen), gap(18),
     surveyCard('Rezeptausblendungen bleiben separat.', 'Ein ausgeblendetes Rezept bleibt ausgeblendet, bis du es unter „Ausgeblendete Rezepte“ ausdrücklich freigibst.', color: AppColors.cream),
   ];
   void saveDislike() {

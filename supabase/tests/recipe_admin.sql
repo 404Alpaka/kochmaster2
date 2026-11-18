@@ -43,6 +43,22 @@ begin
   execute 'reset role'; execute 'set local role authenticated';
   payload:=payload||jsonb_build_object('id',rid,'name','Published test recipe','is_published',true);
   perform public.admin_save_recipe(payload);
+  if exists(select 1 from public.recipes where id=rid and verified_allergens is not null) then raise exception 'Unreviewed became reviewed'; end if;
+  payload:=payload||jsonb_build_object('verified_allergens',jsonb_build_array('Soja'),'verified_diets',jsonb_build_array('Vegan','Vegetarisch'));
+  perform public.admin_save_recipe(payload);
+  if not exists(select 1 from public.recipes where id=rid and verified_allergens=array['Soja'] and verified_diets=array['Vegan','Vegetarisch']) then raise exception 'Metadata missing'; end if;
+  blocked:=false;
+  begin
+    perform public.admin_save_recipe(payload||jsonb_build_object('verified_allergens',jsonb_build_array('Unknown')));
+  exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Unknown allergen accepted'; end if;
+  blocked:=false;
+  begin
+    perform public.admin_save_recipe(payload||jsonb_build_object('verified_diets',jsonb_build_array('Vegan')));
+  exception when check_violation then blocked:=true; end;
+  if not blocked then raise exception 'Contradictory diets accepted'; end if;
+  perform public.admin_save_recipe(payload||jsonb_build_object('verified_allergens','[]'::jsonb));
+  if not exists(select 1 from public.recipes where id=rid and verified_allergens=array[]::text[]) then raise exception 'Empty review lost'; end if;
   blocked:=false;
   begin
     perform public.admin_save_recipe(payload||jsonb_build_object('name','Must rollback','ingredients',jsonb_build_array(jsonb_build_object('name','SQL test ingredient','quantity',0,'unit','g'))));
@@ -52,6 +68,14 @@ begin
   if n<>1 then raise exception 'Failed save partially changed recipe'; end if;
   select count(*) into n from public.recipe_ingredients where recipe_id=rid and quantity=150;
   if n<>1 then raise exception 'Failed save lost ingredients'; end if;
+  payload:=payload||jsonb_build_object('image_url','https://example.com/rice.jpg','steps',jsonb_build_array('Koche {{ingredient:rice_link}} 15 Minuten.'),'ingredients',jsonb_build_array(jsonb_build_object('name','SQL test ingredient','quantity',150,'unit','g','step_key','rice_link')));
+  perform public.admin_save_recipe(payload);
+  if not exists(select 1 from public.recipes where id=rid and image_url='https://example.com/rice.jpg' and steps[1]='Koche {{ingredient:rice_link}} 15 Minuten.') then raise exception 'Image or step link lost'; end if;
+  blocked:=false;
+  begin
+    perform public.admin_save_recipe(payload||jsonb_build_object('steps',jsonb_build_array('{{ingredient:missing}}')));
+  exception when raise_exception then blocked:=true; end;
+  if not blocked then raise exception 'Missing ingredient link accepted'; end if;
   execute 'reset role'; execute 'set local role anon';
   select count(*) into n from public.recipes where id=rid;
   if n<>1 then raise exception 'Published recipe invisible'; end if;
