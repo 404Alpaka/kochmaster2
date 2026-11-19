@@ -38,6 +38,16 @@ const recipeCategoryLabels = {
   'dessert': 'Desserts',
   'breakfast': 'Frühstück',
   'snack': 'Snacks',
+  'stew': 'Eintöpfe',
+  'casserole': 'Aufläufe',
+  'baking': 'Backen',
+  'pasta': 'Pasta',
+  'rice': 'Reisgerichte',
+  'potato': 'Kartoffelgerichte',
+  'bread': 'Brot & Brötchen',
+  'cake': 'Kuchen & Gebäck',
+  'grilling': 'Grillen',
+  'sauce': 'Soßen & Dips',
 };
 
 class Recipe {

@@ -47,6 +47,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Fotografiere dein Gericht, um es als Rezeptbild zu verwenden.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Wähle ein Foto deines Gerichts als Rezeptbild aus.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

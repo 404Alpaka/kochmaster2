@@ -1,7 +1,13 @@
+import 'dart:ui' show ImmutableBuffer, ImageDescriptor;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase/supabase.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/admin_recipe_repository.dart';
+import '../data/recipe_image_uploader.dart';
 import '../domain/recipe.dart';
 import 'recipe_image.dart';
 import '../../../core/theme/app_theme.dart';
@@ -31,9 +37,17 @@ class _IngredientForm {
 }
 
 class RecipeEditorPage extends StatefulWidget {
-  const RecipeEditorPage({super.key, required this.repository, this.existing});
+  const RecipeEditorPage({
+    super.key,
+    required this.repository,
+    this.existing,
+    this.imageUploader,
+    this.pickPhoto,
+  });
   final AdminRecipeRepository repository;
   final AdminRecipe? existing;
+  final RecipeImageUploader? imageUploader;
+  final Future<XFile?> Function(ImageSource source)? pickPhoto;
   @override
   State<RecipeEditorPage> createState() => _RecipeEditorPageState();
 }
@@ -50,6 +64,15 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   List<CatalogIngredient> catalog = [];
   bool published = false;
   String? imageUrl;
+  RecipePhoto? pendingPhoto;
+  bool pickingPhoto = false;
+  RecipeImageUploader? get photoUploader =>
+      widget.imageUploader ??
+      (widget.repository is SupabaseAdminRecipeRepository
+          ? SupabaseRecipeImageUploader(
+              (widget.repository as SupabaseAdminRecipeRepository).client,
+            )
+          : null);
   int previousServings = 2;
   bool syncing = false;
   Set<String>? allergens;
@@ -149,6 +172,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   double? amount(String value) =>
       double.tryParse(value.trim().replaceAll(',', '.'));
   Future<void> save() async {
+    if (busy || pickingPhoto) return;
     if (!form.currentState!.validate()) return;
     if (encodedSteps().contains('⟦') ||
         encodedSteps().contains('[Zutat entfernt]')) {
@@ -172,6 +196,18 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
       error = null;
     });
     try {
+      if (pendingPhoto != null) {
+        final uploader = photoUploader;
+        if (uploader == null) {
+          throw StateError('Bilder-Upload ist nicht verfügbar.');
+        }
+        final uploaded = await uploader.upload(pendingPhoto!);
+        if (!mounted) return;
+        setState(() {
+          imageUrl = uploaded;
+          pendingPhoto = null;
+        });
+      }
       await widget.repository.save({
         'id': widget.existing?.recipe.id,
         'image_url': imageUrl,
@@ -199,6 +235,12 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
         ],
       });
       if (mounted) Navigator.pop(context, true);
+    } on StorageException catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Das Foto konnte nicht hochgeladen werden. Prüfe Verbindung, Admin-Rechte und die Einrichtung des Bildspeichers. Dein Foto bleibt für einen erneuten Versuch ausgewählt.',
+        );
+      }
     } on PostgrestException catch (e) {
       if (mounted) {
         setState(
@@ -292,7 +334,57 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     return text;
   }
 
+  Future<void> selectPhoto(ImageSource source) async {
+    if (busy || pickingPhoto) return;
+    setState(() {
+      pickingPhoto = true;
+      error = null;
+    });
+    try {
+      final file =
+          await (widget.pickPhoto?.call(source) ??
+              ImagePicker().pickImage(
+                source: source,
+                maxWidth: 1600,
+                maxHeight: 1600,
+                imageQuality: 85,
+                requestFullMetadata: false,
+              ));
+      if (file == null || !mounted) return;
+      if (await file.length() > RecipePhoto.maxBytes) {
+        throw const FormatException('Das Bild darf höchstens 8 MB groß sein.');
+      }
+      final photo = RecipePhoto.fromBytes(await file.readAsBytes());
+      // Decode before replacing the current photo, so corrupt files keep it intact.
+      final buffer = await ImmutableBuffer.fromUint8List(photo.bytes);
+      try {
+        final descriptor = await ImageDescriptor.encoded(buffer);
+        descriptor.dispose();
+      } finally {
+        buffer.dispose();
+      }
+      if (mounted) setState(() => pendingPhoto = photo);
+    } on FormatException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } on PlatformException catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Kamera oder Fotos konnten nicht geöffnet werden. Bitte erlaube den Zugriff in den Geräte-Einstellungen oder wähle ein anderes Bild.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Das Bild konnte nicht geöffnet werden. Bitte wähle ein anderes Foto.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => pickingPhoto = false);
+    }
+  }
+
   Future<void> changeImage() async {
+    if (busy || pickingPhoto) return;
     final controller = imageAddress;
     controller.text = imageUrl?.startsWith('https://') == true ? imageUrl! : '';
     String? validation;
@@ -312,6 +404,22 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                     'Wähle ein zum Gericht passendes Bild oder eine öffentliche HTTPS-Bildadresse. Ohne passendes Foto kannst du „Kein Bild“ wählen.',
                   ),
                   const SizedBox(height: 16),
+                  if (photoUploader != null) ...[
+                    if (kIsWeb ||
+                        defaultTargetPlatform == TargetPlatform.android ||
+                        defaultTargetPlatform == TargetPlatform.iOS)
+                      ListTile(
+                        leading: const Icon(Icons.camera_alt_outlined),
+                        title: const Text('Foto aufnehmen'),
+                        onTap: () => Navigator.pop(context, 'camera'),
+                      ),
+                    ListTile(
+                      leading: const Icon(Icons.photo_library_outlined),
+                      title: const Text('Aus Galerie auswählen'),
+                      onTap: () => Navigator.pop(context, 'gallery'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   Row(
                     children: [
                       for (final asset in [
@@ -341,6 +449,8 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                   ),
                   const SizedBox(height: 16),
                   TextField(
+                    onTapOutside: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
                     key: const ValueKey('recipe-image-url'),
                     controller: controller,
                     decoration: InputDecoration(
@@ -386,8 +496,17 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
       ),
     );
     // The closing dialog still owns its text field during the transition.
+    if (selected == 'camera' || selected == 'gallery') {
+      await selectPhoto(
+        selected == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      );
+      return;
+    }
     if (mounted && selected != null) {
-      setState(() => imageUrl = selected.isEmpty ? null : selected);
+      setState(() {
+        imageUrl = selected.isEmpty ? null : selected;
+        pendingPhoto = null;
+      });
     }
   }
 
@@ -433,6 +552,8 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                   ),
                 Flexible(
                   child: ListView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     shrinkWrap: true,
                     children: [
                       for (final row in available)
@@ -548,14 +669,23 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             borderRadius: BorderRadius.circular(24),
             child: Stack(
               children: [
-                RecipeImage(
-                  imageUrl,
-                  key: const ValueKey('editor-recipe-image'),
-                  height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  semanticLabel: 'Rezeptbild',
-                ),
+                if (pendingPhoto != null)
+                  Image.memory(
+                    pendingPhoto!.bytes,
+                    height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    semanticLabel: 'Ausgewähltes Rezeptfoto',
+                  )
+                else
+                  RecipeImage(
+                    imageUrl,
+                    key: const ValueKey('editor-recipe-image'),
+                    height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    semanticLabel: 'Rezeptbild',
+                  ),
                 Positioned(
                   left: 16,
                   top: 16,
@@ -582,7 +712,9 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            imageUrl == null || imageUrl!.isEmpty
+            pendingPhoto != null
+                ? 'Dein Foto · wird beim Speichern hochgeladen'
+                : imageUrl == null || imageUrl!.isEmpty
                 ? 'Noch kein Rezeptbild hinterlegt'
                 : imageUrl!.startsWith('https://')
                 ? 'Dein Rezeptbild'
@@ -592,9 +724,9 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: changeImage,
+              onPressed: busy || pickingPhoto ? null : changeImage,
               icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Bild ändern'),
+              label: Text(pickingPhoto ? 'Foto wird geladen …' : 'Bild ändern'),
             ),
           ),
           const SizedBox(height: 24),
@@ -624,6 +756,14 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     canPop: !busy,
     child: Scaffold(
       appBar: AppBar(
+        actions: [
+          if (MediaQuery.viewInsetsOf(context).bottom > 0)
+            IconButton(
+              tooltip: 'Tastatur schließen',
+              icon: const Icon(Icons.keyboard_hide_outlined),
+              onPressed: () => FocusManager.instance.primaryFocus?.unfocus(),
+            ),
+        ],
         title: Text(
           widget.existing == null ? 'Neues Rezept' : 'Rezept bearbeiten',
         ),
@@ -665,6 +805,8 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                     key: form,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: ListView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: EdgeInsets.fromLTRB(
                         MediaQuery.sizeOf(context).width < 600 ? 16 : 32,
                         16,
@@ -699,7 +841,10 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                           [
                             const SizedBox(height: 14),
                             TextFormField(
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
                               key: const ValueKey('recipe-name'),
+                              textInputAction: TextInputAction.done,
                               controller: name,
                               decoration: const InputDecoration(
                                 labelText: 'Rezeptname',
@@ -711,7 +856,10 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
                               key: const ValueKey('recipe-minutes'),
+                              textInputAction: TextInputAction.done,
                               controller: minutes,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
@@ -721,7 +869,10 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
                               key: const ValueKey('recipe-servings'),
+                              textInputAction: TextInputAction.done,
                               controller: servings,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
@@ -774,7 +925,12 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                                       if (rows[i].id == null) ...[
                                         const SizedBox(height: 12),
                                         TextFormField(
+                                          onTapOutside: (_) => FocusManager
+                                              .instance
+                                              .primaryFocus
+                                              ?.unfocus(),
                                           key: ValueKey('ingredient-name-$i'),
+                                          textInputAction: TextInputAction.done,
                                           controller: rows[i].name,
                                           maxLength: 120,
                                           decoration: const InputDecoration(
@@ -788,7 +944,12 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                                       ],
                                       const SizedBox(height: 12),
                                       TextFormField(
+                                        onTapOutside: (_) => FocusManager
+                                            .instance
+                                            .primaryFocus
+                                            ?.unfocus(),
                                         key: ValueKey('ingredient-amount-$i'),
+                                        textInputAction: TextInputAction.done,
                                         controller: rows[i].amount,
                                         keyboardType:
                                             const TextInputType.numberWithOptions(
@@ -871,6 +1032,8 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                           'Schreibe die Zubereitung und füge Zutaten mit Menge direkt an der Cursorposition ein.',
                           [
                             TextFormField(
+                              onTapOutside: (_) =>
+                                  FocusManager.instance.primaryFocus?.unfocus(),
                               key: const ValueKey('recipe-steps'),
                               controller: steps,
                               focusNode: stepsFocus,
@@ -1037,7 +1200,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                             child: LinearProgressIndicator(),
                           ),
                         FilledButton.icon(
-                          onPressed: busy ? null : save,
+                          onPressed: busy || pickingPhoto ? null : save,
                           icon: const Icon(Icons.check),
                           label: Text(
                             busy ? 'Wird gespeichert …' : 'Rezept speichern',

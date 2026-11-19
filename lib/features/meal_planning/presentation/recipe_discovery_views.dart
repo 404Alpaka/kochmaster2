@@ -118,6 +118,16 @@ extension _RecipeDiscovery on _PlanningPageState {
     'salad' => Icons.grass_outlined,
     'dessert' => Icons.cake_outlined,
     'breakfast' => Icons.free_breakfast_outlined,
+    'stew' => Icons.soup_kitchen_outlined,
+    'casserole' => Icons.kitchen_outlined,
+    'baking' => Icons.bakery_dining_outlined,
+    'pasta' => Icons.ramen_dining_outlined,
+    'rice' => Icons.rice_bowl_outlined,
+    'potato' => Icons.dinner_dining_outlined,
+    'bread' => Icons.bakery_dining_outlined,
+    'cake' => Icons.cake_outlined,
+    'grilling' => Icons.outdoor_grill_outlined,
+    'sauce' => Icons.tapas_outlined,
     _ => Icons.bakery_dining_outlined,
   };
 

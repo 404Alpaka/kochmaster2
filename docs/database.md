@@ -44,6 +44,8 @@ in dieser Reihenfolge ausführen:
 | `202611180003_recipe_categories.sql` | Rezeptkategorien, Admin-Speicherung und aggregierte Favoritenzahlen |
 | `202611190001_repair_recipe_images.sql` | Bildschema und Zutatenverknüpfungen auch nach vorgezogener Kategorienmigration nachziehen |
 | `202611190002_curate_recipe_catalog.sql` | Geprüfte Kategorien für die 21 bestehenden öffentlichen Rezepte und zwei passende Bildzuordnungen |
+| `202611190003_recipe_photo_uploads.sql` | Öffentlicher Rezeptbildspeicher mit Größen-/Formatgrenzen und Uploadrecht für Rezept-Admins |
+| `202611190004_more_recipe_categories.sql` | Zehn weitere Rezeptkategorien; vorhandene Zuordnungen und Schutz vor widersprüchlichen Ernährungskategorien bleiben erhalten |
 
 Bei bestehenden Projekten zuerst prüfen, welche Migrationen bereits angewendet
 wurden. Die Dateien sind keine beliebig wiederholbaren Setup-Skripte.

@@ -67,6 +67,28 @@ und seit der Prüfung veränderte Rezepte.
 
 ## Verwendung
 
+Der Editor bietet 21 Kategorien, darunter Eintöpfe, Aufläufe, Backen, Pasta,
+Reisgerichte, Kartoffelgerichte, Brot & Brötchen, Kuchen & Gebäck, Grillen sowie
+Soßen & Dips. Salate bleiben als vorhandene Kategorie erhalten. Für die neuen
+Werte ist `202611190004_more_recipe_categories.sql` erforderlich.
+Ein Tippen außerhalb eines Eingabefelds oder Scrollen schließt die Tastatur;
+bei geöffneter Tastatur gibt es zusätzlich oben „Tastatur schließen“.
+
+Im Rezepteditor bietet „Bild ändern“ Kamera und Galerie an. Die Kamera ist auf
+Android/iOS und in unterstützten mobilen Browsern verfügbar; am Desktop wird
+die Dateiauswahl angeboten. Auswahl und Vorschau sind lokal. Erst „Rezept speichern“
+lädt das Foto in Supabase Storage hoch und speichert die öffentliche Bildadresse.
+JPG, PNG und WebP bis 8 MB werden akzeptiert. Der Picker verkleinert nach Möglichkeit
+auf 1600 Pixel und reduziert die JPEG-Qualität auf 85 Prozent.
+
+Dafür `supabase/migrations/202611190003_recipe_photo_uploads.sql` ausführen.
+Der öffentliche Bucket `recipe-images` erlaubt Uploads nur freigeschalteten
+Rezept-Admins in deren eigenem Nutzerordner. Bestehende Bilder werden nicht
+überschrieben. Auch Bilder von Entwürfen sind über ihre Bildadresse öffentlich;
+keine privaten Fotos verwenden. Wird nach erfolgreichem Upload die Rezeptspeicherung
+abgebrochen, kann ein unreferenziertes Bild bestehen bleiben. Ein erneuter
+Speicherversuch im selben Editor verwendet die bereits hochgeladene Adresse.
+
 Ein freigeschalteter Rezept-Admin sieht nach dem Anmelden oben das Symbol
 „Rezepte verwalten“. Dort lassen sich Rezepte erstellen, bearbeiten,
 als Entwurf speichern oder veröffentlichen. Ein Rezept hat Namen,
