@@ -51,15 +51,17 @@ extension _MiseViews on _PlanningPageState {
   });
 
   Widget miseScaffold() => Scaffold(
+    extendBody: true,
     body: SafeArea(
+      bottom: false,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
-          child: Stack(children: [ListView(
+          child: Stack(children: [Builder(builder: (contentContext) => ListView(
             key: ValueKey(
               'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
             ),
-            padding: EdgeInsets.fromLTRB(22, recipeDiscoveryActive ? recipeHeaderHeight + 4 : 18, 22, 28),
+            padding: EdgeInsets.fromLTRB(22, recipeDiscoveryActive ? recipeHeaderHeight + 4 : 18, 22, 28 + MediaQuery.paddingOf(contentContext).bottom),
             children: [
               if (cookingPage > 0) ...cookingFlow(),
               if (cookingPage == 0) ...[
@@ -91,7 +93,7 @@ extension _MiseViews on _PlanningPageState {
                 ),
               ],
             ],
-          ),
+          )),
           if (recipeDiscoveryActive) Positioned(top: 0, left: 0, right: 0, child: recipePinnedHeader()),
           ]),
         ),

@@ -1,6 +1,7 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:material_ui/material_ui.dart';
 
-/// Keeps the navigation surface continuous behind the phone's home indicator.
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
     super.key,
@@ -22,83 +23,112 @@ class AppBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Material(
-      key: const ValueKey('bottom-navigation-surface'),
-      color: colors.surface,
-      elevation: 8,
-      shadowColor: colors.onSurface.withValues(alpha: .08),
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      clipBehavior: Clip.antiAlias,
-      child: SafeArea(
-        top: false,
-        child: Center(
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-              child: Row(
-                children: [
-                  for (final (tab, label, icon, activeIcon) in destinations)
-                    Expanded(
-                      child: Semantics(
-                        selected: selectedTab == tab,
-                        button: true,
-                        label: label,
-                        excludeSemantics: true,
-                        onTap: () => onSelect(tab),
-                        child: Tooltip(
-                          message: label,
-                          child: InkWell(
-                            onTap: () => onSelect(tab),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.onSurface.withValues(alpha: .10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  key: const ValueKey('bottom-navigation-surface'),
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withValues(alpha: dark ? .88 : .82),
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(
+                      color: dark
+                          ? colors.outlineVariant
+                          : Colors.white.withValues(alpha: .9),
+                    ),
+                  ),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Row(
+                      children: [
+                        for (final (tab, label, icon, activeIcon)
+                            in destinations)
+                          Expanded(
+                            child: Semantics(
+                              selected: selectedTab == tab,
+                              button: true,
+                              label: label,
+                              excludeSemantics: true,
+                              onTap: () => onSelect(tab),
+                              child: Tooltip(
+                                message: label,
+                                child: InkWell(
+                                  onTap: () => onSelect(tab),
+                                  borderRadius: BorderRadius.circular(32),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
                                     curve: Curves.easeOut,
-                                    width: 52,
-                                    height: 32,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2,
+                                      vertical: 10,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: selectedTab == tab
-                                          ? colors.primaryContainer
+                                          ? colors.primaryContainer.withValues(
+                                              alpha: .85,
+                                            )
                                           : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(32),
                                     ),
-                                    child: Icon(
-                                      selectedTab == tab ? activeIcon : icon,
-                                      size: 23,
-                                      color: selectedTab == tab
-                                          ? colors.primary
-                                          : colors.onSurfaceVariant,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          selectedTab == tab
+                                              ? activeIcon
+                                              : icon,
+                                          size: 24,
+                                          color: selectedTab == tab
+                                              ? colors.primary
+                                              : colors.onSurface,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          label,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            height: 1.2,
+                                            fontWeight: selectedTab == tab
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                            color: selectedTab == tab
+                                                ? colors.primary
+                                                : colors.onSurface,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    label,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      height: 1.2,
-                                      fontWeight: selectedTab == tab
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      color: selectedTab == tab
-                                          ? colors.primary
-                                          : colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
           ),
