@@ -4,7 +4,9 @@ do $$
 declare a uuid:=gen_random_uuid(); u uuid:=gen_random_uuid(); rid text;
   payload jsonb; n integer; blocked boolean;
 begin
-  insert into auth.users(id) values(a),(u);
+  insert into auth.users(id,raw_user_meta_data) values
+    (a,'{"first_name":"Test","last_name":"Admin"}'),
+    (u,'{"first_name":"Test","last_name":"User"}');
   insert into public.recipe_admins(user_id) values(a);
   insert into public.user_week_plans(user_id,week_start) values(u,'2026-11-16');
   payload:=jsonb_build_object('name','Admin test draft','minutes',15,'servings',2,'steps',jsonb_build_array('Garen.'),

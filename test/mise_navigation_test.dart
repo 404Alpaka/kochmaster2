@@ -15,15 +15,10 @@ void main() {
     await tester.pumpWidget(const KochmasterApp());
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('mise.'), findsOneWidget);
-    expect(find.text('Gutes Essen. Clever geplant.'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 8));
+    await tester.tap(find.text('Rezepte'));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    expect(
-      find.text('Dein Vorrat. Dein nächstes Lieblingsgericht.'),
-      findsOneWidget,
-    );
+    expect(find.text('Rezepte entdecken'), findsOneWidget);
+    expect(find.text('mise.'), findsNothing);
     await tester.tap(find.text('Vorrat'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -36,7 +31,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Tomaten'), findsOneWidget);
-    await tester.tap(find.text('Haushalt'));
+    await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zum Haushalt'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Zusammen isst’s besser.'), findsOneWidget);

@@ -255,7 +255,13 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          section('Planungsbereich'),
+          section('Planungsbereich', action: IconButton(
+            tooltip: 'Kontodaten aktualisieren',
+            onPressed: accountPending > 0 || saving || loading || householdBusy
+                ? null
+                : reloadAccountData,
+            icon: const Icon(Icons.refresh, size: 20),
+          )),
           DropdownButtonFormField<String>(
             key: ValueKey('account-scope-${activeHouseholdId ?? 'private'}'),
             initialValue: activeHouseholdId ?? 'private',

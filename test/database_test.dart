@@ -67,6 +67,9 @@ void main() {
       final requests = <Uri>[];
       final transport = MockClient((request) async {
         requests.add(request.url);
+        if (request.url.path.endsWith('/recipe_popularity')) {
+          return http.Response('[]', 200, request: request, headers: {'content-type': 'application/json'});
+        }
         final select = request.url.queryParameters['select']!;
         if (select.contains('step_key') ||
             select.contains('image_url') ||
@@ -116,7 +119,7 @@ void main() {
       expect(recipes.single.ingredients.single.stepKey, isNull);
       final admin = await SupabaseAdminRecipeRepository(client).list();
       expect(admin.single.recipe.name, 'Reis');
-      expect(requests.length, 2);
+      expect(requests.length, 3);
       expect(requests.first.queryParameters['is_published'], 'eq.true');
       expect(requests.first.queryParameters['deleted_at'], 'is.null');
     },
@@ -128,10 +131,11 @@ void main() {
     expect(find.text('Tomaten-Spinat-Pasta'), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, 'Erneut versuchen'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Rezepte'));
+    await tester.pumpAndSettle();
 
     await reveal(tester, find.text('Tomaten-Spinat-Pasta'));
     expect(find.text('Tomaten-Spinat-Pasta'), findsOneWidget);
-    await reveal(tester, find.textContaining('Rezepte aus der Datenbank'));
-    expect(find.textContaining('Rezepte aus der Datenbank'), findsOneWidget);
+    expect(find.byTooltip('Meine Rezeptsammlung'), findsOneWidget);
   });
 }

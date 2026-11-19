@@ -3,12 +3,18 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/recipe.dart';
 
-String recipeImageSource(Recipe recipe) =>
-    recipe.imageUrl ??
-    ((recipe.name.toLowerCase().contains('pasta') ||
-            recipe.name.toLowerCase().contains('nudeln'))
-        ? 'assets/images/pasta.jpg'
-        : 'assets/images/rice.jpg');
+String? recipeImageSource(Recipe recipe) {
+  final source = recipe.imageUrl?.trim();
+  return source == null || source.isEmpty ? null : source;
+}
+
+String recipeImageCaption(Recipe recipe) {
+  final source = recipeImageSource(recipe);
+  if (source == null) return 'Noch kein Rezeptbild hinterlegt';
+  return source.startsWith('assets/')
+      ? 'Stockfoto · Serviervorschlag'
+      : 'Rezeptbild';
+}
 
 class RecipeImage extends StatelessWidget {
   const RecipeImage(
@@ -19,31 +25,63 @@ class RecipeImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.semanticLabel,
   });
-  final String source;
+  final String? source;
   final double height;
   final double width;
   final BoxFit fit;
   final String? semanticLabel;
   @override
   Widget build(BuildContext context) {
+    final imageSource = source?.trim();
+    if (imageSource == null || imageSource.isEmpty) {
+      return Semantics(
+        label: 'Noch kein Rezeptbild hinterlegt',
+        image: true,
+        child: Container(
+          height: height,
+          width: width,
+          color: AppColors.softGreen,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.restaurant_outlined,
+                size: height < 90 ? 26 : 38,
+                color: AppColors.sage,
+              ),
+              if (height >= 90) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Noch kein Rezeptbild',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     Widget fallback(BuildContext context, Object error, StackTrace? stack) =>
         Container(
           height: height,
           width: width,
           color: AppColors.softGreen,
           alignment: Alignment.center,
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.broken_image_outlined, size: 36),
-              SizedBox(height: 8),
-              Text('Bild nicht verfügbar'),
+              Icon(Icons.broken_image_outlined, size: height < 90 ? 26 : 36),
+              if (height >= 90) ...[
+                const SizedBox(height: 8),
+                const Text('Bild nicht verfügbar'),
+              ],
             ],
           ),
         );
-    if (source.startsWith('https://')) {
+    if (imageSource.startsWith('https://')) {
       return Image.network(
-        source,
+        imageSource,
         height: height,
         width: width,
         fit: fit,
@@ -52,7 +90,7 @@ class RecipeImage extends StatelessWidget {
       );
     }
     return Image.asset(
-      source,
+      imageSource,
       height: height,
       width: width,
       fit: fit,

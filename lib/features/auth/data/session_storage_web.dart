@@ -1,4 +1,5 @@
 import 'package:web/web.dart' as web;
+import 'auth_callback_uri.dart';
 
 String? readSession(String key) {
   try {
@@ -21,14 +22,13 @@ void writeSession(String key, String? session) {
 }
 
 String? authCallbackCode() => Uri.base.queryParameters['code'];
+String? authCallbackError() => authErrorFromUri(Uri.base);
 String? authRedirectUrl() =>
-    Uri.base.replace(query: '', fragment: '').toString();
+    authReturnAddress(Uri.base);
 void clearAuthCallback() {
-  final query = Map<String, String>.from(Uri.base.queryParameters)
-    ..remove('code');
   web.window.history.replaceState(
     null,
     '',
-    Uri.base.replace(queryParameters: query).toString(),
+    withoutAuthCallback(Uri.base).toString(),
   );
 }

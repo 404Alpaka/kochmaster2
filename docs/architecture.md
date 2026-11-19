@@ -1,8 +1,9 @@
 # Kochmaster: Struktur und Ausbau
 
-Grundlage: bisherige Planung in „Startupidee entwickeln“. Flutter für Android,
-iOS und die interaktive Web-App; Supabase als vorgesehene zentrale Datenplattform.
-Backend- und Produktvorschläge sind noch keine produktiven Integrationen.
+Stand: 18.11.2026. Flutter-App mit Schwerpunkt Web und Supabase für Rezeptkatalog,
+Authentifizierung und kontobezogene Daten. Android- und iOS-Projekte sind vorhanden;
+deren Sitzungen werden über geschützten Gerätespeicher dauerhaft gespeichert.
+Die Implementierung ist mit simuliertem Speicher getestet; Gerätetests stehen aus.
 
 ## Jetzt angelegt
 
@@ -13,41 +14,61 @@ lib/
   features/
     recipes/
       domain/                   Rezept, Zutatenmengen, Repository-Vertrag
-      data/                     Austauschbare Demo-Datenquelle
+      data/                     Supabase-Katalog, Adminzugriff und Demo-Datenquelle
+      presentation/             Rezeptansicht und Rezeptverwaltung
+    auth/                       Registrierung, Anmeldung, Passwort-Reset und Sitzung
+    account_data/               Persönliche Kontodaten und Versionsvergleich
+    households/                 Haushalte, Mitgliedschaften und Einladungen
     meal_planning/domain/       Geplantes Gericht mit Portionenzahl
+    meal_planning/data/         Private und gemeinsame Wochenpläne
+    meal_planning/presentation/ Planung, Vorrat, Kochmodus und Rückblick
     shopping/domain/            Skalierung und Zusammenfassung der Zutaten
 test/                           Fachlogik und durchgängiger UI-Ablauf
 docs/                           Architektur und Ausbauplanung
+supabase/migrations/            Schema, RLS und Datenbankfunktionen
+supabase/tests/                 SQL-Prüfungen
 ```
 
 Jeder Funktionsbereich erhält bei Bedarf `presentation/`, `application/`,
 `domain/` und `data/`. Fachlogik bleibt unabhängig von Flutter und Supabase.
-Die erste Oberfläche liegt noch gemeinsam in `app/kochmaster_app.dart`;
-bei Ausbau werden die Seiten in die jeweiligen Features verschoben.
-Keine leeren Modulgerüste und keine zusätzlichen Pakete für den ersten Prototyp.
+Der App-Rahmen liegt in `app/kochmaster_app.dart`. Die Planungsoberfläche ist auf
+`planning_page.dart` und zugehörige `part`-Dateien im Planungsfeature aufgeteilt.
 
 ## Geplanter Ausbau
 
-1. `recipes/presentation`, `meal_planning/presentation`, `shopping/presentation`:
-   Oberflächen aufteilen; echte Datumswochen, mehrere Mahlzeiten, lokale Speicherung.
-2. `supabase/migrations`, `supabase/seed.sql`, `supabase/functions`:
-   versioniertes Schema, geprüfte Rezepte, Zutaten-IDs, Auth und RLS.
-   Zunächst getrennte Entwicklungsumgebung; keine geheimen Schlüssel in Flutter.
-3. Features `auth`, `profiles`, `households`: Nutzer, Mitgliedschaften,
-   Präferenzen, Haushaltsbudget und gemeinsame Listen.
-4. `nutrition` und `planning`: Nährwertquellen, Allergene, Einheitenumrechnung,
-   nachvollziehbare Kalorien-, Protein- und Budgetoptimierung.
-5. `retailers`, `catalog`, `cart`, `orders`: Rezeptzutaten, Händlerprodukte,
-   zeitgestempelte Preise und bestellbare Packungen getrennt modellieren.
-   Echte Händlerzugänge sind Voraussetzung für Bestellungen und aktuelle Preise.
-6. Separates Admin-Werkzeug für redaktionelle Freigabe; bei Bedarf öffentliche
-   Rezeptwebsite und eigener Optimierungsdienst. Erst dann gemeinsame Pakete
-   oder ein `apps/`-Monorepo einführen.
+- Pagination für den öffentlichen Katalog ergänzen; aktuell höchstens 100 Rezepte.
+- Versionsvergleich für Katalogrezepte ergänzen.
+- Android-/iOS-Gerätetests und native Rückleitungen für Auth-Links ergänzen.
+- Echtzeit-Synchronisierung und gemeinsame Transaktionen für zusammengehörige
+  Plan- und Vorratsänderungen prüfen.
+- Einheitenumrechnung, Nährwertquellen und nachvollziehbare Kalorien-, Protein-
+  und Budgetoptimierung ausbauen. Die vorhandene Allergenauswahl umfasst nur
+  die angebotenen Planungsausschlüsse.
+- Händlerprodukte, zeitgestempelte Preise und bestellbare Packungen anbinden.
+  Echte Händlerzugänge sind Voraussetzung für Bestellungen und aktuelle Preise.
 
 ## Aktueller Umfang
 
-Zwei Beispieldatensätze, Rezeptdetails, Suche, sieben Planplätze,
-Portionenskalierung und abhakbare Einkaufsliste. Zusammenfassung erfolgt anhand
-Zutaten-ID und Einheit; unterschiedliche Einheiten werden nicht blind addiert.
-Alle Änderungen liegen ausschließlich im Arbeitsspeicher. Keine Anmeldung,
-Cloudspeicherung, echten Preise oder berechneten Nährwerte vorhanden.
+Öffentlicher Supabase-Katalog mit Suche, Rezeptdetails und Portionsskalierung;
+eine separate Demo-Datenquelle lässt sich ausdrücklich aktivieren. Datierte
+Kalenderwochen unterstützen ein Gericht pro Tag, Planungsvorschläge und eine
+abhakbare Einkaufsliste. Mengen werden anhand von Zutaten-ID und Einheit summiert;
+unterschiedliche Einheiten werden nicht automatisch umgerechnet.
+
+Registrierung, E-Mail-Bestätigung, Anmeldung, Abmeldung und Passwort-Reset sind
+implementiert. Web-Sitzungen werden im Browser, Android-/iOS-Sitzungen im
+geschützten Gerätespeicher gespeichert. Private Wochenpläne,
+Einkaufsstatus und persönliche Kontodaten liegen in Supabase. Haushalte teilen
+Plan, Einkauf, Vorrat und weitere Planungsdaten mit rollenabhängigen Rechten.
+Kontodokumente, gemeinsame Haushaltsdaten und private Wochenpläne besitzen
+Versionsnummern. Private Pläne benötigen dafür die Migration `202611180001`.
+
+Rezept-Admins bearbeiten Entwürfe, veröffentlichen Rezepte und nutzen einen
+Papierkorb. Bildadressen, verknüpfte Zutaten und geprüfte Planungsangaben werden
+unterstützt. Gespeicherte Pläne erhalten Rezept-Snapshots. Vorschläge beachten
+geprüfte Einschränkungen, Kochzeit, Abneigungen, Favoriten und gemerkte Rezepte.
+Produktpreise, Bestellungen und eine echte Nährwertoptimierung fehlen noch.
+
+Einrichtung und Grenzen: [Datenbank](database.md), [Konten](accounts.md),
+[Haushalte](households.md), [Rezeptverwaltung](admin.md),
+[Planungsumfrage](planning-survey.md).

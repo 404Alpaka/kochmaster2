@@ -295,14 +295,16 @@ void main() {
       await settleAccount(tester);
 
       expect(
-        find.text('Haushalt'),
+        find.byTooltip('Zum Haushalt'),
         findsOneWidget,
         reason: tester
             .widgetList<Text>(find.byType(Text))
             .map((w) => w.data)
             .join(' | '),
       );
-      await tester.tap(find.text('Haushalt'));
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zum Haushalt'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Alex'), findsNothing);
       await tester.tap(find.byType(DropdownButtonFormField<String>));
@@ -347,14 +349,16 @@ void main() {
       expect(find.text('Nur ansehen'), findsOneWidget);
       expect(find.text('Wochenplan erstellen'), findsNothing);
       expect(
-        find.text('Haushalt'),
-        findsOneWidget,
+        find.byTooltip('Zum Haushalt'),
+        findsNothing,
         reason: tester
             .widgetList<Text>(find.byType(Text))
             .map((w) => w.data)
             .join(' | '),
       );
-      await tester.tap(find.text('Haushalt'));
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zum Haushalt'));
       await tester.pumpAndSettle();
       expect(find.text('Deine Rolle: Nur ansehen'), findsOneWidget);
       expect(find.textContaining('Alex'), findsNothing);

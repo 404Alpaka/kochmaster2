@@ -1,9 +1,11 @@
 import 'scroll_helpers.dart';
 
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase/supabase.dart';
 import 'package:kochmaster/features/meal_planning/presentation/planning_page.dart';
 import 'package:kochmaster/features/meal_planning/data/weekly_plan_repository.dart';
 import 'package:kochmaster/features/meal_planning/domain/meal_plan.dart';
@@ -14,6 +16,8 @@ import 'package:kochmaster/features/shopping/domain/build_shopping_list.dart';
 class MemoryWeekStore implements WeeklyPlanRepository {
   final rows = <String, Map<String, dynamic>>{};
   bool fail = false;
+  bool conflict = false;
+  int saveCalls = 0;
   @override
   Future<WeeklyPlan> load(DateTime week, List<Recipe> recipes) async {
     final row = rows[dateKey(week)];
@@ -22,9 +26,22 @@ class MemoryWeekStore implements WeeklyPlanRepository {
 
   @override
   Future<void> save(DateTime week, WeeklyPlan plan) async {
+    saveCalls++;
+    if (conflict) {
+      throw const PostgrestException(message: 'conflict', code: '40001');
+    }
     if (fail) throw StateError('offline');
     rows[dateKey(week)] =
         jsonDecode(jsonEncode(plan.toJson())) as Map<String, dynamic>;
+  }
+}
+
+class LostResponseWeekStore extends MemoryWeekStore {
+  bool loseResponse = false;
+  @override
+  Future<void> save(DateTime week, WeeklyPlan plan) async {
+    await super.save(week, plan);
+    if (loseResponse) throw TimeoutException('Response lost after commit');
   }
 }
 
@@ -39,6 +56,10 @@ void main() {
     (tester) async {
       final store = MemoryWeekStore();
       await tester.pumpWidget(app(store));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rezepte'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Tomaten-Spinat');
       await tester.pumpAndSettle();
       await reveal(tester, find.text('Mehr'));
       await tester.pumpAndSettle();
@@ -82,6 +103,9 @@ void main() {
       await tester.tap(find.byTooltip('Vorherige Woche'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Plan'));
+      await tester.pumpAndSettle();
+      await reveal(tester, find.text('Mo'));
+      await tester.tap(find.text('Mo'));
       await tester.pumpAndSettle();
       final increase = find.byKey(const ValueKey('increase-0'));
       await reveal(tester, increase);
@@ -130,6 +154,75 @@ void main() {
       expect(store.rows.values.single['checked'], isEmpty);
     },
   );
+
+  testWidgets('Versionskonflikt sperrt Speichern bis zum Neuladen', (tester) async {
+    final store = MemoryWeekStore();
+    final week = mondayOf(DateTime.now());
+    await store.save(week, WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}));
+    await tester.pumpWidget(app(store));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Korb'));
+    await tester.pumpAndSettle();
+    if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Selbst einkaufen').last);
+      await tester.pumpAndSettle();
+    }
+    final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
+    store.conflict = true;
+    await reveal(tester, tomato);
+    await tester.tap(tomato);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
+    final calls = store.saveCalls;
+    store.conflict = false;
+    await tester.tap(tomato);
+    await tester.pumpAndSettle();
+    expect(store.saveCalls, calls);
+    await reveal(tester, find.byTooltip('Gespeicherten Wochenplan neu laden'), delta: -150);
+    expect(find.textContaining('Dieser Wochenplan wurde'), findsOneWidget);
+    // Simulate the newer state saved by the other tab.
+    store.rows[dateKey(week)] = WeeklyPlan(
+      meals: {0: PlannedMeal(recipes.first, 3)},
+    ).toJson();
+    await tester.tap(find.byTooltip('Gespeicherten Wochenplan neu laden'));
+    await tester.pumpAndSettle();
+    await reveal(tester, tomato);
+    await tester.tap(tomato);
+    await tester.pumpAndSettle();
+    expect(store.saveCalls, calls + 1);
+    expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
+    expect((store.rows[dateKey(week)]!['meals'] as List).single['servings'], 3);
+  });
+
+  testWidgets('Verlorene Speicherantwort verlangt Neuladen statt erneutem Überschreiben', (tester) async {
+    final store = LostResponseWeekStore();
+    await store.save(mondayOf(DateTime.now()), WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}));
+    await tester.pumpWidget(app(store));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Korb'));
+    await tester.pumpAndSettle();
+    if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Selbst einkaufen').last);
+      await tester.pumpAndSettle();
+    }
+    final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
+    await reveal(tester, tomato);
+    store.loseResponse = true;
+    await tester.tap(tomato);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
+    expect(store.rows.values.single['checked'], isNotEmpty);
+    final calls = store.saveCalls;
+    await tester.tap(tomato);
+    await tester.pumpAndSettle();
+    expect(store.saveCalls, calls);
+    await reveal(tester, find.byTooltip('Gespeicherten Wochenplan neu laden'), delta: -150);
+    expect(find.text('Speicherstand unklar'), findsOneWidget);
+    await tester.tap(find.byTooltip('Gespeicherten Wochenplan neu laden'));
+    await tester.pumpAndSettle();
+    await reveal(tester, tomato);
+    expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
+  });
 
   test('Unveränderte Einkaufspositionen bleiben beim Planen erledigt', () {
     final before = [PlannedMeal(recipes[0], 2)];

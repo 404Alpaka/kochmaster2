@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import '../../auth/data/session_storage.dart';
 
@@ -26,6 +27,9 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../../shopping/domain/build_shopping_list.dart';
 
 part 'mise_views.dart';
+part 'home_views.dart';
+part 'week_action_card.dart';
+part 'recipe_discovery_views.dart';
 part 'account_sync.dart';
 part 'connected_household_views.dart';
 part 'planning_survey.dart';
@@ -69,6 +73,7 @@ class _PlanningPageState extends State<PlanningPage> {
   ];
   final personalRecipes = <Map<String, dynamic>>[];
   int collectionPage = 0;
+  String? recipeCategory;
   final collectionFilters = <String>{};
   String collectionQuery = '';
   Map<String, dynamic> personalRecipeDraft = {};
@@ -104,7 +109,7 @@ class _PlanningPageState extends State<PlanningPage> {
   DateTime? cookedOn;
   final cookedEntries = <String>{};
   final preparedMeals = <Map<String, dynamic>>[];
-  int tab = 0;
+  int tab = 5;
   int shoppingPage = 0;
   int selectedMarket = 0;
   bool showAllDemoProducts = false;
@@ -133,8 +138,6 @@ class _PlanningPageState extends State<PlanningPage> {
   final favoriteRecipes = <String>{};
   final hiddenRecipes = <String>{};
   int selectedDay = DateTime.now().weekday - 1;
-  int saying = 0;
-  Timer? sayingTimer;
   double budget = 75;
   double? planBudget;
   bool planBudgetInitialized = false;
@@ -198,12 +201,6 @@ class _PlanningPageState extends State<PlanningPage> {
   int leftoverRecipeIndex = 0;
   List<Map<String, dynamic>> pantry = [];
   final searchController = TextEditingController();
-  static const sayings = [
-    'Gutes Essen. Clever geplant.',
-    'Dein Vorrat. Dein nächstes Lieblingsgericht.',
-    'Weniger Reste. Mehr Genuss.',
-    'Zusammen schmeckt der Alltag besser.',
-  ];
 
   bool get accountConnected => widget.client != null && widget.user != null;
   AccountDataRepository? accountRepository;
@@ -385,7 +382,6 @@ class _PlanningPageState extends State<PlanningPage> {
 
   @override
   void dispose() {
-    sayingTimer?.cancel();
     cookingTicker?.cancel();
     searchController.dispose();
     super.dispose();
@@ -396,22 +392,20 @@ class _PlanningPageState extends State<PlanningPage> {
   bool saving = false;
   String? loadError;
   String? saveError;
+  bool weekConflict = false;
+  bool weekSaveUncertain = false;
   bool saved = false;
   @override
   void initState() {
     super.initState();
     final invitation = Uri.base.queryParameters['household_invite'];
-    if (invitation != null)
+    if (invitation != null) {
       writeSession('mise-pending-household-invite', invitation);
+    }
     defaultAccountData =
         jsonDecode(jsonEncode(preferencesData())) as Map<String, dynamic>;
     restorePreferences();
     personalCloudData = copyAccountData(preferencesData());
-    sayingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (mounted && tab == 0) {
-        setState(() => saying = (saying + 1) % sayings.length);
-      }
-    });
     if (accountConnected) {
       initializeAccountData();
     } else if (weekRepository != null) {
@@ -474,11 +468,20 @@ class _PlanningPageState extends State<PlanningPage> {
         checked
           ..clear()
           ..addAll(result.checked);
+        weekConflict = false;
+        weekSaveUncertain = false;
+        draft = null;
+        proposalConfirmed = false;
+        swappingDay = null;
       });
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        final missingRevision = error is PostgrestException &&
+            error.code == '42703' && error.message.contains('revision');
         setState(
-          () => loadError = 'Dein Wochenplan konnte nicht geladen werden. Prüfe die Verbindung. Möglicherweise ist ein geplantes Rezept nicht mehr verfügbar.',
+          () => loadError = missingRevision
+              ? 'Für das Laden und Speichern fehlt die Datenbankmigration 202611180001_private_week_plan_revisions.sql. Bitte im Supabase SQL Editor ausführen und den Wochenplan erneut laden.'
+              : 'Dein Wochenplan konnte nicht geladen werden. Prüfe die Verbindung. Möglicherweise ist ein geplantes Rezept nicht mehr verfügbar.',
         );
       }
     } finally {
@@ -512,7 +515,7 @@ class _PlanningPageState extends State<PlanningPage> {
     Map<int, PlannedMeal> nextPlan,
     Set<(String, String)> nextChecked,
   ) async {
-    if (readOnlyShared ||
+    if (weekConflict || readOnlyShared ||
         (accountConnected && (!accountReady || accountError != null)) ||
         saving ||
         loading ||
@@ -541,15 +544,25 @@ class _PlanningPageState extends State<PlanningPage> {
       syncPreparedReservations(week, nextPlan);
       savePreferences();
       return true;
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(
-          () => saveError = 'Die Änderung wurde nicht gespeichert. Dein letzter gespeicherter Stand bleibt erhalten. Bitte versuche die Änderung erneut.',
-        );
+        setState(() {
+          weekSaveUncertain = error is TimeoutException;
+          weekConflict = weekSaveUncertain || (error is PostgrestException && error.code == '40001');
+          saveError = weekSaveUncertain
+              ? 'Die Datenbank hat nicht rechtzeitig geantwortet. Ob die Änderung gespeichert wurde, ist noch unklar. Lade den Wochenplan erneut, bevor du weitere Änderungen speicherst.'
+              : weekConflict
+              ? 'Dieser Wochenplan wurde auf einem anderen Gerät oder in einem anderen Tab geändert. Deine Änderung wurde nicht gespeichert. Lade den aktuellen Wochenplan über den Aktualisieren-Knopf und führe deine Änderung danach erneut aus.'
+              : 'Die Änderung wurde nicht gespeichert. Dein letzter gespeicherter Stand bleibt erhalten. Bitte versuche die Änderung erneut.';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Nicht gespeichert. Bitte prüfe deine Verbindung und versuche es erneut.',
+              weekSaveUncertain
+                  ? 'Speicherstand unklar. Bitte den Wochenplan neu laden.'
+                  : weekConflict
+                  ? 'Wochenplan wurde zwischenzeitlich geändert. Bitte den aktuellen Stand neu laden.'
+                  : 'Nicht gespeichert. Bitte prüfe deine Verbindung und versuche es erneut.',
             ),
           ),
         );
@@ -568,6 +581,8 @@ class _PlanningPageState extends State<PlanningPage> {
     );
     setState(() {
       week = DateTime(week.year, week.month, week.day + delta * 7);
+      selectedDay = dateKey(week) == dateKey(mondayOf(pantryToday))
+          ? pantryToday.weekday - 1 : 0;
       draft = null;
       proposalConfirmed = false;
       surveyStep = 0;
@@ -663,6 +678,7 @@ class _PlanningPageState extends State<PlanningPage> {
   int detailServings = 2;
 
   void details(Recipe recipe) => update(() {
+    tab = 0;
     openedRecipe = recipe;
     detailServings = recipe.servings;
   });

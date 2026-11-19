@@ -34,6 +34,8 @@ void main() {
         const RepaintBoundary(key: preview, child: KochmasterApp()),
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Rezepte'));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       if (const bool.fromEnvironment('CAPTURE_DESIGN')) {
         await tester.runAsync(() async {
@@ -65,6 +67,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Entdecken'), findsOneWidget);
       expect(find.byType(Image), findsOneWidget);
+      await reveal(tester, find.byTooltip('Mehr Portionen'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Mehr Portionen'));
       await tester.pumpAndSettle();
       expect(find.text('3 Personen'), findsOneWidget);

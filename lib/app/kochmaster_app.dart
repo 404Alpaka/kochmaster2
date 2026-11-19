@@ -25,18 +25,11 @@ class KochmasterApp extends StatelessWidget {
         ? AccountScope(
             client: client!,
             storageKey: "kochmaster-${client!.rest.url}-session",
-            builder: (user) => RecipeLoader(
+            builder: (user) => _AccountCatalog(
+              key: ValueKey((client, user?.id)),
               repository: repository!,
-              builder: (recipes) => PlanningPage(
-                key: ValueKey(user?.id ?? 'guest'),
-                recipes: recipes,
-                isDemo: false,
-                client: client,
-                user: user,
-                store: user == null
-                    ? null
-                    : SupabaseWeeklyPlanRepository(client!, user.id),
-              ),
+              client: client!,
+              user: user,
             ),
           )
         : repository == null
@@ -45,5 +38,39 @@ class KochmasterApp extends StatelessWidget {
             repository: repository!,
             builder: (recipes) => PlanningPage(recipes: recipes, isDemo: false),
           ),
+  );
+}
+
+/// Keep loaded week revisions across token refreshes and auth metadata updates.
+/// A different client or account gets a separate state through the parent key.
+class _AccountCatalog extends StatefulWidget {
+  const _AccountCatalog({
+    super.key,
+    required this.repository,
+    required this.client,
+    required this.user,
+  });
+  final RecipeRepository repository;
+  final SupabaseClient client;
+  final User? user;
+  @override
+  State<_AccountCatalog> createState() => _AccountCatalogState();
+}
+
+class _AccountCatalogState extends State<_AccountCatalog> {
+  late final WeeklyPlanRepository? store = widget.user == null
+      ? null
+      : SupabaseWeeklyPlanRepository(widget.client, widget.user!.id);
+  @override
+  Widget build(BuildContext context) => RecipeLoader(
+    repository: widget.repository,
+    builder: (recipes) => PlanningPage(
+      key: ValueKey(widget.user?.id ?? 'guest'),
+      recipes: recipes,
+      isDemo: false,
+      client: widget.client,
+      user: widget.user,
+      store: store,
+    ),
   );
 }

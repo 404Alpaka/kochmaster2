@@ -72,39 +72,16 @@ extension _PlanningSurvey on _PlanningPageState {
     if (surveyStep > 0) return surveyView();
     if (draft != null && swappingDay != null) return replacementView();
     if (draft != null) return proposalView();
-    if (proposalConfirmed) return confirmedProposalView();
+    if (proposalConfirmed) return planView();
     if (plan.isNotEmpty) return planView();
     return [
       title('Deine Woche'),
       gap(5),
       Text('Ein guter Plan beginnt mit deinem Geschmack.', style: muted),
-      gap(18),
-      panel(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'GUT ESSEN. AUF DEINE ART.',
-              style: TextStyle(color: Color(0xFFD5E3C8), fontSize: 13),
-            ),
-            gap(10),
-            const Text(
-              'Was schmeckt dir\ndiese Woche?',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            gap(10),
-            const Text(
-              'Entdecke erst in Ruhe Rezepte. Deinen Plan erstellen wir, wenn du bereit bist.',
-              style: TextStyle(color: Colors.white, fontSize: 15, height: 1.45),
-            ),
-          ],
-        ),
-        color: AppColors.sage,
-      ),
+      gap(12),
+      weekPicker(),
+      gap(12),
+      weekActionCard(),
       gap(18),
       panel(
         Column(
@@ -149,8 +126,6 @@ extension _PlanningSurvey on _PlanningPageState {
         'Allergien, Ernährung, Personen & Tage, Kochzeit. Danach bestätigst du vor dem Vorschlag dein Planbudget.',
         color: AppColors.softGreen,
       ),
-      gap(18),
-      weekPicker(),
     ];
   }
 
@@ -192,10 +167,10 @@ extension _PlanningSurvey on _PlanningPageState {
   ];
 
   bool get showPlanningAction => tab == 1 &&
-      (surveyStep > 0 || (draft == null && !proposalConfirmed && plan.isEmpty));
+      surveyStep > 0;
 
   void startPlanning() {
-    if (saving || loading || loadError != null) return;
+    if (saving || loading) return;
     if (!planBudgetInitialized) {
       planBudget = budget;
       planBudgetInitialized = true;
@@ -229,7 +204,7 @@ extension _PlanningSurvey on _PlanningPageState {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(width: double.infinity, child: FilledButton.icon(
             style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-            onPressed: saving || loading || loadError != null || (surveyStep == 7 && !canApplyBudgetDemo) ? null : () {
+            onPressed: saving || loading || (surveyStep == 7 && !canApplyBudgetDemo) ? null : () {
               if (surveyStep == 0) { startPlanning(); return; }
               if (surveyStep < 5) {
                 if (surveyStep == 4 && !planBudgetInitialized) {
@@ -298,7 +273,7 @@ extension _PlanningSurvey on _PlanningPageState {
     surveyCard('Deine Vorgaben bleiben deine Vorgaben.', 'Allergien und feste Ausschlüsse gelten unabhängig vom Budget. Der Wochenplan wird erst nach deiner Bestätigung übernommen.', color: AppColors.softGreen),
     gap(14),
     TextButton(
-      onPressed: saving || loading || loadError != null ? null : () {
+      onPressed: saving || loading ? null : () {
         surveyCompleted = true;
         savePreferences();
         createProposal();

@@ -54,6 +54,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   bool syncing = false;
   Set<String>? allergens;
   Set<String>? diets;
+  final categories = <String>{};
   bool loading = true;
   bool catalogReady = false;
   bool busy = false;
@@ -71,6 +72,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
       imageUrl = existing.recipe.imageUrl;
       allergens = existing.recipe.verifiedAllergens?.toSet();
       diets = existing.recipe.verifiedDiets?.toSet();
+      categories.addAll(existing.recipe.categories);
       rows.addAll(
         existing.recipe.ingredients.map(
           (i) => _IngredientForm(
@@ -184,6 +186,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
         'is_published': published,
         'verified_allergens': allergens?.toList(),
         'verified_diets': diets?.toList(),
+        'categories': categories.toList(),
         'ingredients': [
           for (final row in rows)
             {
@@ -306,7 +309,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Wähle ein vorhandenes Bild oder verwende eine öffentliche HTTPS-Bildadresse.',
+                    'Wähle ein zum Gericht passendes Bild oder eine öffentliche HTTPS-Bildadresse. Ohne passendes Foto kannst du „Kein Bild“ wählen.',
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -352,6 +355,10 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
           ),
           actions: [
             TextButton(
+              onPressed: () => Navigator.pop(context, ''),
+              child: const Text('Kein Bild'),
+            ),
+            TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Abbrechen'),
             ),
@@ -379,7 +386,9 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
       ),
     );
     // The closing dialog still owns its text field during the transition.
-    if (mounted && selected != null) setState(() => imageUrl = selected);
+    if (mounted && selected != null) {
+      setState(() => imageUrl = selected.isEmpty ? null : selected);
+    }
   }
 
   Future<void> insertIngredient() async {
@@ -532,9 +541,6 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     valueListenable: name,
     builder: (context, value, _) {
       final title = value.text.trim();
-      final pasta =
-          title.toLowerCase().contains('pasta') ||
-          title.toLowerCase().contains('nudeln');
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -543,10 +549,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             child: Stack(
               children: [
                 RecipeImage(
-                  imageUrl ??
-                      (pasta
-                          ? 'assets/images/pasta.jpg'
-                          : 'assets/images/rice.jpg'),
+                  imageUrl,
                   key: const ValueKey('editor-recipe-image'),
                   height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
                   width: double.infinity,
@@ -579,9 +582,11 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            imageUrl?.startsWith('https://') == true
+            imageUrl == null || imageUrl!.isEmpty
+                ? 'Noch kein Rezeptbild hinterlegt'
+                : imageUrl!.startsWith('https://')
                 ? 'Dein Rezeptbild'
-                : 'Beispielbild · wie in der Rezeptansicht',
+                : 'Stockfoto · Serviervorschlag',
             style: TextStyle(color: AppColors.muted, fontSize: 12),
           ),
           Align(
@@ -909,6 +914,52 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                         ),
                         sectionCard(
                           '04',
+                          'Kategorien',
+                          'Wähle passende Zutatenarten und Mahlzeiten. Mehrfachauswahl ist möglich.',
+                          [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final entry
+                                    in recipeCategoryLabels.entries)
+                                  FilterChip(
+                                    label: Text(entry.value),
+                                    selected: categories.contains(entry.key),
+                                    onSelected: busy
+                                        ? null
+                                        : (selected) => setState(() {
+                                            if (selected) {
+                                              if ([
+                                                'meat',
+                                                'fish',
+                                              ].contains(entry.key)) {
+                                                categories.removeAll([
+                                                  'vegetarian',
+                                                  'vegan',
+                                                ]);
+                                              }
+                                              if ([
+                                                'vegetarian',
+                                                'vegan',
+                                              ].contains(entry.key)) {
+                                                categories.removeAll([
+                                                  'meat',
+                                                  'fish',
+                                                ]);
+                                              }
+                                              categories.add(entry.key);
+                                            } else {
+                                              categories.remove(entry.key);
+                                            }
+                                          }),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        sectionCard(
+                          '05',
                           'Bewusst geplant',
                           'Nur nach Prüfung aller Zutaten und der Zubereitung bestätigen. Die sechs Allergene entsprechen den Ausschlüssen der Planung und sind keine vollständige Allergenkennzeichnung.',
                           [
@@ -966,7 +1017,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                           ],
                         ),
                         sectionCard(
-                          '05',
+                          '06',
                           'Bereit zum Teilen?',
                           'Speichere einen Entwurf oder gib das Rezept für den Katalog frei.',
                           [

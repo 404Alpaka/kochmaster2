@@ -47,7 +47,8 @@ void main() {
       if (request.url.path.endsWith('/logout')) {
         return http.Response('', 204, request: request);
       }
-      if (request.url.path.endsWith('/user_week_plans')) {
+      if (request.url.path.endsWith('/user_week_plans') ||
+          request.url.path.endsWith('/save_user_week_plan')) {
         expect(request.headers['Authorization'], 'Bearer $token');
         if (fail) {
           return http.Response(
@@ -57,18 +58,20 @@ void main() {
           );
         }
         if (request.method == 'POST') {
-          saved = jsonDecode(request.body) as Map<String, dynamic>;
-          expect(saved!['user_id'], userId);
-          expect(saved!['week_start'], '2026-11-16');
-          return http.Response('', 201, request: request);
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['p_user'], userId);
+          expect(body['p_week'], '2026-11-16');
+          expect(body['p_revision'], 0);
+          saved = {
+            'meals': body['p_meals'],
+            'checked': body['p_checked'],
+            'revision': 1,
+          };
+          return http.Response('1', 200, request: request);
         }
         expect(request.url.queryParameters['user_id'], 'eq.$userId');
         return http.Response(
-          jsonEncode(
-            saved == null
-                ? null
-                : {'meals': saved!['meals'], 'checked': saved!['checked']},
-          ),
+          jsonEncode(saved),
           200,
           request: request,
           headers: {'content-type': 'application/json'},
@@ -90,6 +93,7 @@ void main() {
       final store = SupabaseWeeklyPlanRepository(client, userId);
       final recipes = DemoRecipeRepository().getAll();
       final week = DateTime(2026, 11, 16);
+      await store.load(week, recipes);
       final plan = WeeklyPlan(
         meals: {0: PlannedMeal(recipes[0], 4)},
         checked: {('tomato', 'g')},

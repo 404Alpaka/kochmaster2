@@ -45,9 +45,12 @@ class WeeklyPlan {
       if (day < 0 || day > 6 || plan.meals.containsKey(day)) {
         throw const FormatException('Ungültiger Wochentag');
       }
-      plan.meals[day] = PlannedMeal(recipe, row['servings'] as int,
+      plan.meals[day] = PlannedMeal(
+        recipe,
+        row['servings'] as int,
         preparedMealId: row['prepared_meal_id'] as String?,
-        preparedConsumed: row['prepared_consumed'] == true);
+        preparedConsumed: row['prepared_consumed'] == true,
+      );
     }
     for (final value in data['checked'] as List) {
       final row = value as Map<String, dynamic>;
@@ -66,16 +69,19 @@ class SupabaseWeeklyPlanRepository implements WeeklyPlanRepository {
   SupabaseWeeklyPlanRepository(this.client, this.userId);
   final SupabaseClient client;
   final String userId;
+  final _revisions = <String, int>{};
   @override
   Future<WeeklyPlan> load(DateTime week, List<Recipe> recipes) async {
     final row = await client
         .from('user_week_plans')
-        .select('meals,checked')
+        .select('meals,checked,revision')
         .eq('user_id', userId)
         .eq('week_start', dateKey(week))
         .maybeSingle()
         .timeout(const Duration(seconds: 15));
-    return row == null ? WeeklyPlan() : WeeklyPlan.fromJson(row, recipes);
+    final plan = row == null ? WeeklyPlan() : WeeklyPlan.fromJson(row, recipes);
+    _revisions[dateKey(week)] = (row?['revision'] as num?)?.toInt() ?? 0;
+    return plan;
   }
 
   @override
@@ -83,13 +89,23 @@ class SupabaseWeeklyPlanRepository implements WeeklyPlanRepository {
     if (client.auth.currentUser?.id != userId) {
       throw StateError('Bitte erneut anmelden.');
     }
-    await client
-        .from('user_week_plans')
-        .upsert({
-          'user_id': userId,
-          'week_start': dateKey(week),
-          ...plan.toJson(),
-        }, onConflict: 'user_id,week_start')
+    final key = dateKey(week);
+    if (!_revisions.containsKey(key)) {
+      throw StateError('Wochenplan zuerst laden.');
+    }
+    final data = plan.toJson();
+    final revision = await client
+        .rpc(
+          'save_user_week_plan',
+          params: {
+            'p_user': userId,
+            'p_week': key,
+            'p_meals': data['meals'],
+            'p_checked': data['checked'],
+            'p_revision': _revisions[key],
+          },
+        )
         .timeout(const Duration(seconds: 15));
+    _revisions[key] = (revision as num).toInt();
   }
 }

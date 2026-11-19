@@ -1,0 +1,356 @@
+[
+  {
+    "id": "614d1ae0-abf3-4c47-8845-9167a9e7d1b1",
+    "name": "Thunfischsalat",
+    "ingredients": [
+      "Fisch"
+    ],
+    "categories": [
+      "fish",
+      "salad",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-01",
+    "name": "Tomaten-Spinat-Pasta",
+    "ingredients": [
+      "Knoblauchzehe",
+      "Olivenöl",
+      "Nudeln",
+      "Spinat",
+      "Tomaten"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": "assets/images/pasta.jpg"
+  },
+  {
+    "id": "example-02",
+    "name": "Brokkoli-Reis-Pfanne",
+    "ingredients": [
+      "Brokkoli",
+      "Olivenöl",
+      "Zwiebel",
+      "Reis",
+      "Tomaten"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": "assets/images/rice.jpg"
+  },
+  {
+    "id": "example-03",
+    "name": "Rote-Linsen-Suppe",
+    "ingredients": [
+      "Karotten",
+      "Rote Linsen",
+      "Olivenöl",
+      "Zwiebel",
+      "Gemüsebrühe"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "soup",
+      "starter",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-04",
+    "name": "Kartoffel-Spinat-Frittata",
+    "ingredients": [
+      "Ei",
+      "Milch",
+      "Olivenöl",
+      "Kartoffeln",
+      "Spinat"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-05",
+    "name": "Kichererbsen-Curry",
+    "ingredients": [
+      "Kichererbsen, gekocht und abgetropft",
+      "Kokosmilch",
+      "Currypulver",
+      "Olivenöl",
+      "Reis",
+      "Tomaten"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-06",
+    "name": "Couscous-Feta-Salat",
+    "ingredients": [
+      "Couscous",
+      "Gurke",
+      "Feta",
+      "Zitronensaft",
+      "Gemüsebrühe",
+      "Tomaten"
+    ],
+    "categories": [
+      "vegetarian",
+      "salad",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-07",
+    "name": "Bananen-Porridge",
+    "ingredients": [
+      "Banane",
+      "Zimt",
+      "Milch",
+      "Haferflocken"
+    ],
+    "categories": [
+      "vegetarian",
+      "breakfast"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-08",
+    "name": "Apfel-Joghurt-Müsli",
+    "ingredients": [
+      "Apfel",
+      "Honig",
+      "Haferflocken",
+      "Naturjoghurt"
+    ],
+    "categories": [
+      "vegetarian",
+      "breakfast"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-09",
+    "name": "Chili sin Carne",
+    "ingredients": [
+      "Kidneybohnen, gekocht und abgetropft",
+      "Mais, abgetropft",
+      "Currypulver",
+      "Olivenöl",
+      "Zwiebel",
+      "Passierte Tomaten",
+      "Paprika"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-10",
+    "name": "Champignon-Rahm-Pasta",
+    "ingredients": [
+      "Sahne",
+      "Champignons",
+      "Olivenöl",
+      "Zwiebel",
+      "Nudeln"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-11",
+    "name": "Ofenkartoffeln mit Knoblauchquark",
+    "ingredients": [
+      "Knoblauchzehe",
+      "Zitronensaft",
+      "Olivenöl",
+      "Kartoffeln",
+      "Magerquark",
+      "Naturjoghurt"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-12",
+    "name": "Zucchini-Tomaten-Reis",
+    "ingredients": [
+      "Olivenöl",
+      "Zwiebel",
+      "Passierte Tomaten",
+      "Reis",
+      "Gemüsebrühe",
+      "Zucchini"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-13",
+    "name": "Avocado-Ei-Brot",
+    "ingredients": [
+      "Avocado",
+      "Vollkornbrot",
+      "Ei",
+      "Zitronensaft"
+    ],
+    "categories": [
+      "vegetarian",
+      "breakfast",
+      "snack"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-14",
+    "name": "Tomaten-Mozzarella-Salat",
+    "ingredients": [
+      "Vollkornbrot",
+      "Zitronensaft",
+      "Mozzarella",
+      "Olivenöl",
+      "Tomaten"
+    ],
+    "categories": [
+      "vegetarian",
+      "salad",
+      "starter"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-15",
+    "name": "Tofu-Gemüse-Pfanne",
+    "ingredients": [
+      "Brokkoli",
+      "Karotten",
+      "Olivenöl",
+      "Reis",
+      "Sojasauce",
+      "Naturtofu"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-16",
+    "name": "Erbsen-Risotto",
+    "ingredients": [
+      "Geriebener Gouda",
+      "Olivenöl",
+      "Zwiebel",
+      "Erbsen, tiefgekühlt",
+      "Reis",
+      "Gemüsebrühe"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-17",
+    "name": "Gemüse-Bulgur",
+    "ingredients": [
+      "Bulgur",
+      "Olivenöl",
+      "Paprika",
+      "Gemüsebrühe",
+      "Tomaten",
+      "Zucchini"
+    ],
+    "categories": [
+      "vegetarian",
+      "vegan",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-18",
+    "name": "Herzhafte Gemüsepfannkuchen",
+    "ingredients": [
+      "Karotten",
+      "Ei",
+      "Weizenmehl",
+      "Milch",
+      "Olivenöl",
+      "Zucchini"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-19",
+    "name": "Brokkoli-Kartoffel-Auflauf",
+    "ingredients": [
+      "Brokkoli",
+      "Geriebener Gouda",
+      "Sahne",
+      "Milch",
+      "Kartoffeln"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  },
+  {
+    "id": "example-20",
+    "name": "Linsen-Bolognese",
+    "ingredients": [
+      "Karotten",
+      "Rote Linsen",
+      "Olivenöl",
+      "Zwiebel",
+      "Passierte Tomaten",
+      "Nudeln",
+      "Gemüsebrühe"
+    ],
+    "categories": [
+      "vegetarian",
+      "main"
+    ],
+    "image_url": null
+  }
+]

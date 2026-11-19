@@ -6,6 +6,8 @@ class DemoRecipeRepository implements RecipeRepository {
     Recipe(
       id: 'pasta',
       name: 'Tomaten-Spinat-Pasta',
+      imageUrl: 'assets/images/pasta.jpg',
+      categories: {'vegetarian', 'main'},
       minutes: 20,
       servings: 2,
       ingredients: [
@@ -22,6 +24,8 @@ class DemoRecipeRepository implements RecipeRepository {
     Recipe(
       id: 'rice',
       name: 'Brokkoli-Reis-Pfanne',
+      imageUrl: 'assets/images/rice.jpg',
+      categories: {'vegetarian', 'vegan', 'main'},
       minutes: 25,
       servings: 2,
       ingredients: [

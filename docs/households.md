@@ -5,7 +5,10 @@
 Die Migration `supabase/migrations/202611170003_account_data_and_households.sql`
 im Supabase SQL Editor ausführen. Sie ist unabhängig von den optionalen
 Rezeptbild-Feldern, setzt aber Supabase Auth voraus. Die Migration ist lokal
-unter PostgreSQL/PGlite geprüft, hier nicht im Entwicklungsprojekt ausgeführt.
+unter PostgreSQL/PGlite geprüft. Am 18.11.2026 hat der Nutzer die erfolgreiche
+Ausführung im verwendeten Supabase-Projekt gemeldet; eine erneute unabhängige
+Prüfung des dortigen Schemas und der Rechte fand nicht statt. Bei einem neuen
+Projekt die Reihenfolge in [database.md](database.md) beachten.
 Danach die App neu starten. Bei fehlender Migration zeigt die Kontoseite den
 konkreten Dateinamen und schreibt keine Ersatzdaten in die Cloud.
 
@@ -60,7 +63,8 @@ aufrufbar; stattdessen den Code in einer dort erreichbaren App eingeben.
 
 ## Synchronisierung und Grenzen
 
-Jeder Start lädt den Cloudstand. Die Aktualisieren-Schaltfläche oben lädt ihn
+Jeder Start lädt den Cloudstand. Die Aktualisieren-Schaltfläche unter Haushalt
+beim Planungsbereich lädt ihn
 auch während der Nutzung; es gibt noch kein Echtzeit-Abonnement.
 Änderungen werden nacheinander gespeichert und als laufend, gespeichert oder
 fehlgeschlagen angezeigt. Kontodokument, Haushaltsdokument und gemeinsamer
@@ -74,8 +78,11 @@ setzt Entwürfe und Kochmodus zurück.
 Plan und Vorrats-/Reservierungsdaten liegen weiterhin in getrennten Dokumenten;
 sie werden nicht gemeinsam in einer einzigen Transaktion gespeichert. Ein
 Teilfehler wird angezeigt und muss erneut gespeichert bzw. abgeglichen werden.
-Private Wochenpläne verwenden weiterhin den bisherigen Speicherweg ohne
-Versionsvergleich. Die App löscht keinen Haushalt und verschickt keine E-Mails.
+Private Wochenpläne besitzen mit Migration `202611180001_private_week_plan_revisions.sql`
+ebenfalls einen Versionsvergleich; siehe [accounts.md](accounts.md).
+Die App löscht keinen Haushalt und verschickt keine
+Haushaltseinladungen per E-Mail. Bestätigungs- und Passwort-Reset-Mails werden
+über Supabase Auth angefordert.
 
 ## Prüfungen
 

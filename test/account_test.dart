@@ -38,14 +38,18 @@ void main() {
     expect(find.text('Bitte gib dein Passwort ein.'), findsOneWidget);
     await tester.tap(find.text('Neues Konto erstellen'));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Fabian');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Mustermann');
     await tester.enterText(
-      find.byType(TextFormField).at(0),
+      find.byType(TextFormField).at(2),
       'test@example.com',
     );
-    await tester.enterText(find.byType(TextFormField).at(1), 'long-enough');
-    await tester.enterText(find.byType(TextFormField).at(2), 'different');
-    await tester.ensureVisible(
+    await tester.enterText(find.byType(TextFormField).at(3), 'long-enough');
+    await tester.enterText(find.byType(TextFormField).at(4), 'different');
+    await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Registrieren'),
+      100,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Registrieren'));
     await tester.pumpAndSettle();

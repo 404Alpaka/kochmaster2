@@ -272,39 +272,7 @@ extension _AccountSync on _PlanningPageState {
     }
     return Column(
       children: [
-        SafeArea(
-          bottom: false,
-          child: Material(
-            color: AppColors.softGreen,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.cloud_outlined, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${activeHousehold?.name ?? 'Privat'} · ${accountPending > 0
-                          ? 'Wird gespeichert …'
-                          : accountError != null
-                          ? 'Nicht synchronisiert'
-                          : 'Im Konto gespeichert'}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Kontodaten aktualisieren',
-                    onPressed:
-                        accountPending > 0 || saving || loading || householdBusy
-                        ? null
-                        : reloadAccountData,
-                    icon: const Icon(Icons.refresh, size: 20),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        if (accountPending > 0) const LinearProgressIndicator(),
         if (accountError != null)
           MaterialBanner(
             content: Text(accountError!),

@@ -1,5 +1,70 @@
 # Rezeptverwaltung und Rechte
 
+## Rezeptkategorien
+
+Migration `202611180003_recipe_categories.sql` ergänzt `recipes.categories`.
+Sie setzt die bisherigen Rezeptmigrationen und `user_preferences` aus der
+Haushaltsmigration voraus. Die Migration ist lokal geprüft. Am 19.11.2026 führte
+der Nutzer sie im Supabase-Zielprojekt aus;
+Kategorien und Favoritenfunktion wurden anschließend live nachgewiesen. Die
+Nachmigration `202611190001_repair_recipe_images.sql` ergänzt die zuvor fehlenden
+Bildfelder und Zutatenverknüpfungen, ohne den Kategorien-Speicherweg zu überschreiben.
+
+Im Editor lassen sich Fleisch, Fisch, Vegetarisch, Vegan, Vorspeisen, Hauptgerichte,
+Suppen, Salate, Desserts, Frühstück und Snacks mehrfach auswählen. Beim Bearbeiten
+werden vorhandene Kategorien geladen. Fleisch/Fisch lassen sich nicht mit
+Vegetarisch/Vegan kombinieren. Die Datenbank validiert erlaubte Werte und speichert
+die Auswahl atomar mit dem Rezept; ungültige Angaben rollen die gesamte Änderung
+zurück. Ältere Clients ohne Kategorienfeld behalten bestehende Kategorien bei.
+
+Kategorien sind redaktionelle Suchmerkmale und ersetzen keine geprüften
+Allergen- oder Ernährungsangaben für die Planung. Neue oder bisher nicht
+eingeordnete Katalogrezepte erhalten ihre Kategorien im Editor. Eigene Rezepte
+speichern ihre Kategorien im privaten Rezept-Snapshot und damit in den Kontodaten.
+
+Die Rezeptseite zeigt Kategorien mit Icons, einen täglich wechselnden Vorschlag
+und beliebte Rezepte nach der Anzahl gespeicherter Favoriten. `recipe_popularity`
+liefert nur aggregierte Zahlen veröffentlichter, nicht gelöschter Katalogrezepte;
+Benutzer-IDs und private Favoritenlisten werden nicht veröffentlicht. Neue Zahlen
+werden beim Laden des Katalogs abgerufen. Ohne Zahlen wird keine Beliebtheit erfunden.
+Titel, Herz zur Sammlung und Suche bleiben beim Scrollen in einem transparenten,
+leicht unscharfen Kopf sichtbar.
+
+Prüfung: `node tool/test_recipe_categories.mjs` sowie
+`flutter test test/recipe_categories_test.dart test/admin_recipes_test.dart`.
+
+## Katalogpflege vom 19.11.2026
+
+Der öffentliche Katalog enthielt 21 Rezepte ohne Kategorien und ohne Bildadresse.
+`202611190002_curate_recipe_catalog.sql` ergänzt die anhand von Namen und
+Zutaten redaktionell eingeordneten Kategorien. Die Migration prüft vor jeder
+Änderung Rezept-ID, Namen und die vollständige Zutaten-Namensliste. Bestehende
+Kategorien und Bildadressen werden erhalten; geänderte Rezepte werden übersprungen.
+Die vorbereitete Zuordnung liegt zusätzlich in
+`supabase/data/catalog_curation_20261119.json` zur Prüfung vor.
+
+Der Nutzer hat die Migration ausgeführt. Die anschließende Live-API-Prüfung
+bestätigte 21 kategorisierte Rezepte, 2 Rezepte mit Bild und 19 ohne Bild.
+Die Fotos sind ausdrücklich nur Tomaten-Spinat-Pasta und Brokkoli-Reis-Pfanne
+zugeordnet. Die bisherige automatische Zuordnung eines Pasta-/Reisfotos anhand
+des Namens wurde entfernt. Fehlende Bilder erscheinen als neutraler Platzhalter;
+fehlerhafte Bildadressen als nicht verfügbares Bild. Die Beschriftung unterscheidet
+fehlende Bilder, Stockfotos und ausdrücklich hinterlegte Rezeptbilder.
+
+Im Editor kann ein unpassendes Bild über „Bild ändern“ → „Kein Bild“ entfernt
+werden. Der optionale Seed liefert bei seinen beiden Rezepten passende Kategorien
+und Bildadressen und wird erst nach den Schema-Migrationen ausgeführt.
+
+Die Kategorien sind Suchmerkmale, keine geprüften Ernährungs- oder Allergenangaben.
+`verified_diets` und `verified_allergens` sowie vorhandene Plan-Snapshots werden
+durch die Katalogpflege nicht verändert. Weitere echte Rezeptfotos müssen jeweils
+passend ergänzt werden; die 19 fehlenden Bilder werden nicht durch fremde Gerichte ersetzt.
+
+Prüfungen: `node tool/test_catalog_curation.mjs` sowie
+`flutter test test/recipe_image_test.dart test/recipe_categories_test.dart`.
+Die SQL-Prüfung umfasst wiederholte Ausführung, eigene Kategorien/Bildadressen
+und seit der Prüfung veränderte Rezepte.
+
 ## Verwendung
 
 Ein freigeschalteter Rezept-Admin sieht nach dem Anmelden oben das Symbol
@@ -57,14 +122,15 @@ fehlgeschlagenes Speichern, Wiederholen nach Ladefehlern, Löschbestätigung,
 Papierkorb und lesbare Wochenplan-Snapshots.
 
 Bei gleichzeitiger Bearbeitung desselben Rezepts gewinnt vorläufig die letzte
-Speicherung. Rezeptbilder und endgültige Löschung sind nicht Teil dieser Version.
+Speicherung. Bildadressen werden unterstützt (siehe unten); eine endgültige
+Löschung bietet die App nicht an.
 
 ## Geprüfte Planungsangaben
 
 Vor Verwendung der aktualisierten App die Migration
 `202611170001_recipe_planning_metadata.sql` nach den bisherigen Migrationen
-anwenden. Die Migration und die erweiterten SQL-Prüfungen sind lokal vorbereitet;
-eine Ausführung auf Supabase ist hier noch nicht erfolgt.
+anwenden. Die vollständige Reihenfolge steht in [database.md](database.md).
+Die zugehörigen Spalten wurden am 19.11.2026 über die Live-API nachgewiesen.
 
 Im Rezepteditor lassen sich Allergene und Ernährungsweisen unabhängig als
 geprüft markieren. Nur nach Prüfung der Zutaten und Zubereitung bestätigen.
@@ -77,7 +143,8 @@ zurück; Speicherung erfolgt zusammen mit dem Rezept in einer Transaktion.
 ## Bilder und verknüpfte Zutaten
 
 Zusätzlich `202611170002_recipe_images_and_step_links.sql` nach der Metadaten-
-Migration ausführen. Lokal vorbereitet, noch nicht im Supabase-Projekt ausgeführt.
+Migration ausführen. Im verwendeten Projekt wurde die ältere Lücke am 19.11.2026
+durch `202611190001_repair_recipe_images.sql` nachgezogen und live geprüft.
 Die Migration ergänzt `recipes.image_url` und `recipe_ingredients.step_key` und
 aktualisiert das atomare Speichern. Die SQL-Tests setzen beide Migrationen voraus.
 

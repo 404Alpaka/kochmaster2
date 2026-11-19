@@ -26,6 +26,19 @@ const planningAllergens = [
   'Soja',
 ];
 const planningDiets = ['Vegetarisch', 'Vegan'];
+const recipeCategoryLabels = {
+  'meat': 'Fleisch',
+  'fish': 'Fisch',
+  'vegetarian': 'Vegetarisch',
+  'vegan': 'Vegan',
+  'starter': 'Vorspeisen',
+  'main': 'Hauptgerichte',
+  'soup': 'Suppen',
+  'salad': 'Salate',
+  'dessert': 'Desserts',
+  'breakfast': 'Frühstück',
+  'snack': 'Snacks',
+};
 
 class Recipe {
   const Recipe({
@@ -38,6 +51,8 @@ class Recipe {
     this.imageUrl,
     this.verifiedAllergens,
     this.verifiedDiets,
+    this.categories = const {},
+    this.favoriteCount = 0,
   });
   final String id;
   final String name;
@@ -50,6 +65,8 @@ class Recipe {
   /// Null means the recipe has not been reviewed for planning restrictions.
   final Set<String>? verifiedAllergens;
   final Set<String>? verifiedDiets;
+  final Set<String> categories;
+  final int favoriteCount;
 }
 
 abstract interface class RecipeRepository {
@@ -65,6 +82,7 @@ Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
   'image_url': recipe.imageUrl,
   'verified_allergens': recipe.verifiedAllergens?.toList(),
   'verified_diets': recipe.verifiedDiets?.toList(),
+  'categories': recipe.categories.toList(),
   'ingredients': [
     for (final item in recipe.ingredients)
       {
@@ -87,6 +105,7 @@ Recipe recipeFromSnapshot(Map<String, dynamic> data) => Recipe(
       ?.cast<String>()
       .toSet(),
   verifiedDiets: (data['verified_diets'] as List?)?.cast<String>().toSet(),
+  categories: (data['categories'] as List?)?.cast<String>().toSet() ?? {},
   ingredients: (data['ingredients'] as List)
       .map(
         (item) => IngredientAmount(

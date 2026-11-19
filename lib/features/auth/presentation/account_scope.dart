@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase/supabase.dart';
 
 import '../data/session_storage.dart';
+import '../data/auth_store.dart';
 import 'password_reset_page.dart';
 
 class AccountScope extends StatefulWidget {
@@ -13,10 +14,12 @@ class AccountScope extends StatefulWidget {
     required this.client,
     required this.storageKey,
     required this.builder,
+    this.sessionStore,
   });
   final SupabaseClient client;
   final String storageKey;
   final Widget Function(User?) builder;
+  final AuthStore? sessionStore;
   @override
   State<AccountScope> createState() => _AccountScopeState();
 }
@@ -26,6 +29,9 @@ class _AccountScopeState extends State<AccountScope> {
   bool ready = false;
   String? error;
   bool recovery = false;
+  late final AuthStore store = OrderedAuthStore(
+    widget.sessionStore ?? createAuthStore(),
+  );
   String get recoveryKey => '${widget.storageKey}-recovery';
   @override
   void initState() {
@@ -33,25 +39,46 @@ class _AccountScopeState extends State<AccountScope> {
     restore();
   }
 
+  void persistSession(String key, String? value) {
+    unawaited(
+      store.write(key, value).catchError((Object _) {
+        if (mounted) {
+          setState(
+            () => error = 'Die Anmeldung konnte nicht dauerhaft gespeichert werden. Bitte prüfe den Gerätespeicher oder die Website-Daten und melde dich bei Bedarf erneut an.',
+          );
+        }
+      }),
+    );
+  }
+
   Future<void> restore() async {
+    String? saved;
+    try {
+      saved = await store.read(widget.storageKey);
+      recovery = await store.read(recoveryKey) == 'true';
+    } catch (_) {
+      error = 'Die gespeicherte Anmeldung konnte nicht gelesen werden. Bitte erneut anmelden.';
+    }
+    if (!mounted) return;
     subscription = widget.client.auth.onAuthStateChange.listen(
       (event) {
         if (event.event == AuthChangeEvent.passwordRecovery) {
           recovery = true;
-          writeSession(recoveryKey, 'true');
+          persistSession(recoveryKey, 'true');
         } else if (event.event == AuthChangeEvent.signedOut) {
           recovery = false;
-          writeSession(recoveryKey, null);
+          persistSession(recoveryKey, null);
         }
         if (event.session != null) {
-          writeSession(widget.storageKey, jsonEncode(event.session!.toJson()));
+          persistSession(
+            widget.storageKey,
+            jsonEncode(event.session!.toJson()),
+          );
         } else if (event.event == AuthChangeEvent.signedOut) {
-          writeSession(widget.storageKey, null);
+          persistSession(widget.storageKey, null);
         }
         if (mounted) {
-          setState(() {
-            error = null;
-          });
+          setState(() {});
         }
       },
       onError: (Object e) {
@@ -62,19 +89,30 @@ class _AccountScopeState extends State<AccountScope> {
         }
       },
     );
-    final saved = readSession(widget.storageKey);
-    recovery = readSession(recoveryKey) == 'true';
     if (saved != null) {
       try {
         await widget.client.auth.recoverSession(saved);
+      } on AuthRetryableFetchException {
+        error = 'Die Sitzung konnte wegen eines Verbindungsfehlers nicht erneuert werden. Deine gespeicherte Anmeldung bleibt erhalten.';
       } on AuthException {
-        writeSession(widget.storageKey, null);
+        persistSession(widget.storageKey, null);
+        persistSession(recoveryKey, null);
+        recovery = false;
+      } on FormatException {
+        persistSession(widget.storageKey, null);
+        persistSession(recoveryKey, null);
+        recovery = false;
+        error =
+            'Die gespeicherte Anmeldung ist ungültig. Bitte erneut anmelden.';
       } catch (_) {
         error = 'Sitzung konnte nicht wiederhergestellt werden. Bitte erneut anmelden.';
       }
     }
     final code = authCallbackCode();
-    if (code != null) {
+    if (authCallbackError() != null) {
+      error = 'Der E-Mail-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Bestätigungslink oder über „Passwort vergessen?“ einen neuen Reset-Link an.';
+      clearAuthCallback();
+    } else if (code != null) {
       try {
         await widget.client.auth.exchangeCodeForSession(code);
       } catch (_) {
@@ -102,7 +140,7 @@ class _AccountScopeState extends State<AccountScope> {
         client: widget.client,
         recovery: true,
         onComplete: () {
-          writeSession(recoveryKey, null);
+          persistSession(recoveryKey, null);
           setState(() => recovery = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

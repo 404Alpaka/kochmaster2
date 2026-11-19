@@ -1,7 +1,7 @@
 part of 'planning_page.dart';
 
 extension _PlanningProposal on _PlanningPageState {
-  bool get showProposalAction => tab == 1 && surveyStep == 0 && (draft != null || proposalConfirmed);
+  bool get showProposalAction => tab == 1 && surveyStep == 0 && draft != null;
   String recipeOrigin(Recipe recipe) => favoriteRecipes.contains(recipe.id)
       ? 'Favorit · magst du besonders'
       : rememberedRecipes.contains(recipe.id)

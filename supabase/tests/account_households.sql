@@ -3,7 +3,11 @@ begin;
 do $$
 declare a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); v uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); hid uuid; secret text; revoked text; n bigint; blocked boolean; state_revision bigint;
 begin
- insert into auth.users(id,email,email_confirmed_at) values(a,'household-admin-'||a||'@example.com',now()),(b,'household-editor-'||b||'@example.com',now()),(v,'household-viewer-'||v||'@example.com',now()),(outsider,'household-outsider-'||outsider||'@example.com',now());
+ insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
+ (a,'household-admin-'||a||'@example.com',now(),'{"first_name":"Test","last_name":"Admin"}'),
+ (b,'household-editor-'||b||'@example.com',now(),'{"first_name":"Test","last_name":"Editor"}'),
+ (v,'household-viewer-'||v||'@example.com',now(),'{"first_name":"Test","last_name":"Viewer"}'),
+ (outsider,'household-outsider-'||outsider||'@example.com',now(),'{"first_name":"Test","last_name":"Outsider"}');
  perform set_config('request.jwt.claim.sub',a::text,true);
  execute 'set local role authenticated';
  n:=public.save_user_preferences('{"favoriteRecipes":["private"]}',0,a);

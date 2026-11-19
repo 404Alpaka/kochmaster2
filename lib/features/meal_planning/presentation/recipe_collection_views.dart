@@ -54,6 +54,7 @@ extension _RecipeCollectionViews on _PlanningPageState {
       personalRecipeDraft = {
         'id': recipe?.id ?? 'personal-${DateTime.now().microsecondsSinceEpoch}', 'existing': record != null,
         'kind': record?['kind'] ?? 'own', 'name': recipe?.name ?? '', 'servings': '${recipe?.servings ?? 2}', 'minutes': '${recipe?.minutes ?? 30}',
+        'categories': recipe?.categories.toList() ?? <String>[],
         'source': record?['source'] ?? '', 'notes': record?['notes'] ?? '',
         'ingredients': recipe == null ? <Map<String, dynamic>>[] : [for (final i in recipe.ingredients) {'key': '${DateTime.now().microsecondsSinceEpoch}-${i.ingredientId}', 'id': i.ingredientId, 'name': i.name, 'quantity': '${i.quantity}', 'unit': i.unit}],
         'steps': recipe == null ? <Map<String, dynamic>>[] : [for (var i = 0; i < recipe.steps.length; i++) {'key': 'step-$i', 'text': recipe.steps[i]}],
@@ -73,6 +74,19 @@ extension _RecipeCollectionViews on _PlanningPageState {
     Text(importedPreview ? 'Importvorschau · noch nicht gespeichert. Prüfe alle Angaben.' : 'Ein persönlicher Entwurf für deine Sammlung.', style: muted), gap(18),
     personalField('name', 'Rezeptname'), gap(18),
     Row(children: [Expanded(child: personalField('servings', 'Portionen', number: true)), const SizedBox(width: 12), Expanded(child: personalField('minutes', 'Gesamtzeit in Minuten', number: true))]), gap(18),
+    section('Kategorien'),
+    Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final entry in recipeCategoryLabels.entries)
+        FilterChip(label: Text(entry.value), selected: (personalRecipeDraft['categories'] as List).contains(entry.key),
+          onSelected: (selected) => update(() {
+            final values = personalRecipeDraft['categories'] as List;
+            if (selected) {
+              if (['meat', 'fish'].contains(entry.key)) values.removeWhere((v) => ['vegetarian', 'vegan'].contains(v));
+              if (['vegetarian', 'vegan'].contains(entry.key)) values.removeWhere((v) => ['meat', 'fish'].contains(v));
+              values.add(entry.key);
+            } else { values.remove(entry.key); }
+          })),
+    ]), gap(18),
     panel(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       section('Zutaten · für die angegebenen Portionen'),
       for (final row in personalIngredientRows) ...[
@@ -112,6 +126,7 @@ extension _RecipeCollectionViews on _PlanningPageState {
       update(() => personalRecipeError = 'Bitte Name, 1–99 Portionen, gültige Kochzeit, mindestens eine Zutat mit positiver Menge und Einheit sowie vollständige Kochschritte angeben.'); return;
     }
     final recipe = Recipe(id: personalRecipeDraft['id'] as String, name: name, minutes: minutes, servings: portions,
+      categories: (personalRecipeDraft['categories'] as List).cast<String>().toSet(),
       ingredients: [for (final row in personalIngredientRows) IngredientAmount(personalIngredientId(row), (row['name'] as String).trim(), double.parse((row['quantity'] as String).replaceAll(',', '.')), (row['unit'] as String).trim())],
       steps: [for (final row in personalStepRows) (row['text'] as String).trim()]);
     final record = {'recipe': recipeSnapshot(recipe), 'kind': personalRecipeDraft['kind'], 'source': personalRecipeDraft['source'], 'notes': personalRecipeDraft['notes']};

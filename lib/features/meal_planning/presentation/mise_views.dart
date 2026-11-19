@@ -55,15 +55,15 @@ extension _MiseViews on _PlanningPageState {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
-          child: ListView(
+          child: Stack(children: [ListView(
             key: ValueKey(
-              'mise-page-$tab-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
+              'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
             ),
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+            padding: EdgeInsets.fromLTRB(22, recipeDiscoveryActive ? recipeHeaderHeight + 4 : 18, 22, 28),
             children: [
               if (cookingPage > 0) ...cookingFlow(),
               if (cookingPage == 0) ...[
-              if (cookingRecipe != null && !cookedEntries.contains(cookingKey)) TextButton.icon(onPressed: () => update(() => cookingPage = 1), icon: const Icon(Icons.restaurant), label: const Text('Kochen fortsetzen')),
+              if (tab == 5) ...homeView(),
               if (tab == 0)
                 ...openedRecipe == null
                     ? collectionPage == 0 ? recipeView() : recipeCollectionFlow()
@@ -78,7 +78,7 @@ extension _MiseViews on _PlanningPageState {
               if (tab == 4) ...householdFlow(),
               ],
               gap(24),
-              if (tab != 0) storageStatus(),
+              if (tab != 0 && tab != 5) storageStatus(),
               if (saving) const LinearProgressIndicator(),
               if (loadError != null) ...[
                 Text(
@@ -92,6 +92,8 @@ extension _MiseViews on _PlanningPageState {
               ],
             ],
           ),
+          if (recipeDiscoveryActive) Positioned(top: 0, left: 0, right: 0, child: recipePinnedHeader()),
+          ]),
         ),
       ),
     ),
@@ -116,11 +118,11 @@ extension _MiseViews on _PlanningPageState {
         ),
         child: Row(
           children: [
+            nav(5, 'Start', Icons.home_outlined),
             nav(0, 'Rezepte', Icons.menu_book_outlined),
             nav(1, 'Plan', Icons.calendar_month_outlined),
             nav(2, 'Vorrat', Icons.kitchen_outlined),
             nav(3, 'Korb', Icons.shopping_cart_outlined),
-            nav(4, 'Haushalt', Icons.home_outlined),
           ],
         ),
       ),
@@ -129,12 +131,13 @@ extension _MiseViews on _PlanningPageState {
     ),
   );
 
-  Widget nav(int index, String label, IconData icon) => Expanded(
+  Widget nav(int index, String label, IconData icon, {bool enabled = true}) => Expanded(
     child: Semantics(
       selected: tab == index,
       button: true,
+      enabled: enabled,
       child: InkWell(
-        onTap: () => selectTab(index),
+        onTap: enabled ? () => selectTab(index) : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 13),
           child: Column(
@@ -143,14 +146,14 @@ extension _MiseViews on _PlanningPageState {
               Icon(
                 icon,
                 size: 23,
-                color: tab == index ? AppColors.sage : AppColors.muted,
+                color: !enabled ? AppColors.muted.withValues(alpha: 0.35) : tab == index ? AppColors.sage : AppColors.muted,
               ),
               const SizedBox(height: 5),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: tab == index ? AppColors.sage : AppColors.muted,
+                  color: !enabled ? AppColors.muted.withValues(alpha: 0.35) : tab == index ? AppColors.sage : AppColors.muted,
                   fontWeight: tab == index ? FontWeight.w700 : FontWeight.w400,
                 ),
               ),
@@ -161,226 +164,7 @@ extension _MiseViews on _PlanningPageState {
     ),
   );
 
-  List<Widget> recipeView() {
-    final filtered = recipes.where((r) {
-      final matches =
-          r.name.toLowerCase().contains(query.toLowerCase()) ||
-          r.ingredients.any(
-            (i) => i.name.toLowerCase().contains(query.toLowerCase()),
-          );
-      final inStock = r.ingredients.any(
-        (i) => pantry.any(
-          (p) => (p['name'] as String).toLowerCase() == i.name.toLowerCase(),
-        ),
-      );
-      return matches &&
-          !hiddenRecipes.contains(r.id) &&
-          (recipeFilter != 1 || rememberedRecipes.contains(r.id)) &&
-          (recipeFilter != 2 || favoriteRecipes.contains(r.id)) &&
-          (recipeFilter != 3 || inStock);
-    }).toList();
-    return [
-      Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'mise.',
-              style: TextStyle(
-                fontSize: 29,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1.8,
-              ),
-            ),
-          ),
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              backgroundColor: AppColors.softGreen,
-              foregroundColor: AppColors.lightText,
-              minimumSize: const Size(0, 44),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onPressed: () => selectTab(4),
-            icon: const Icon(Icons.home_outlined, size: 14),
-            label: Text(
-              '$householdName · $servings Personen',
-              style: const TextStyle(fontSize: 11),
-            ),
-          ),
-        ],
-      ),
-      gap(14),
-      AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        layoutBuilder: (current, previous) => Stack(
-          alignment: Alignment.centerLeft,
-          children: [...previous, ?current],
-        ),
-        child: Text(
-          _PlanningPageState.sayings[saying],
-          key: ValueKey(saying),
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(height: 1.25),
-        ),
-      ),
-      gap(6),
-      Text('Dein Geschmack. Dein Budget. Weniger Reste.', style: muted),
-      gap(14),
-      TextField(
-        controller: searchController,
-        decoration: const InputDecoration(
-          hintText: 'Rezepte, Zutaten oder Gerichte',
-          prefixIcon: Icon(Icons.search, size: 18),
-          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        ),
-        onChanged: (value) => update(() => query = value),
-      ),
-      gap(14),
-      SizedBox(
-        width: double.infinity,
-        child: TextButton(
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.softGreen,
-            minimumSize: const Size(0, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          onPressed: showRecipeCollection,
-          child: const Text(
-            'Meine Rezeptsammlung  →',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-      gap(14),
-      Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          for (final (index, label) in [
-            (0, 'Für dich'),
-            (1, 'Gemerkt'),
-            (2, 'Favoriten'),
-            if (recipeFilter == 3) (3, 'Aus Vorrat'),
-          ])
-            ChoiceChip(
-              label: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: recipeFilter == index
-                      ? Colors.white
-                      : AppColors.lightText,
-                ),
-              ),
-              selectedColor: AppColors.sage,
-              backgroundColor: AppColors.softGreen,
-              side: BorderSide.none,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              selected: recipeFilter == index,
-              onSelected: (_) => update(() => recipeFilter = index),
-              showCheckmark: false,
-            ),
-        ],
-      ),
-      gap(14),
-      InkWell(
-        onTap: () => selectTab(1),
-        borderRadius: BorderRadius.circular(16),
-        child: panel(
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Dein Geschmack. Dein Wochenplan.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    gap(4),
-                    Text(
-                      'Merke Rezepte, die du gerne kochen möchtest.',
-                      style: muted,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                children: [
-                  Text(
-                    'Zum Plan',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  SizedBox(height: 16),
-                  Icon(Icons.arrow_forward, size: 18),
-                ],
-              ),
-            ],
-          ),
-          color: AppColors.softGreen,
-          padding: const EdgeInsets.all(14),
-        ),
-      ),
-      gap(14),
-      section(
-        'Heute auf deinem Teller',
-        action: TextButton(
-          onPressed: () => update(() {
-            query = '';
-            searchController.clear();
-            recipeFilter = 0;
-          }),
-          child: const Text('Alle ansehen', style: TextStyle(fontSize: 12)),
-        ),
-      ),
-      if (filtered.isEmpty)
-        panel(
-          Text(
-            recipes.isEmpty
-                ? 'Noch keine veröffentlichten Rezepte vorhanden.'
-                : 'Keine passenden Rezepte gefunden.',
-            style: muted,
-          ),
-        ),
-      if (filtered.isNotEmpty) recipeCard(filtered.first, featured: true),
-      if (filtered.length > 1) ...[
-        gap(14),
-        LayoutBuilder(
-          builder: (context, constraints) => Wrap(
-            spacing: 14,
-            runSpacing: 14,
-            children: [
-              for (final recipe in filtered.skip(1))
-                SizedBox(
-                  width: constraints.maxWidth >= 700
-                      ? (constraints.maxWidth - 28) / 3
-                      : constraints.maxWidth >= 340
-                      ? (constraints.maxWidth - 14) / 2
-                      : constraints.maxWidth,
-                  child: recipeCard(recipe),
-                ),
-            ],
-          ),
-        ),
-      ],
-      gap(18),
-      Text('${filtered.length} von ${recipes.length} Rezepten', style: muted),
-      gap(12),
-      storageStatus(),
-    ];
-  }
+  List<Widget> recipeView() => recipeDiscoveryView();
 
   void toggleRecipePreference(Set<String> values, Recipe recipe) {
     update(() {
@@ -391,13 +175,29 @@ extension _MiseViews on _PlanningPageState {
 
   void showRecipeCollection() => update(() { collectionPage = 1; openedRecipe = null; });
 
+  void stopSuggestingRecipe(Recipe recipe) {
+    update(() {
+      hiddenRecipes.add(recipe.id);
+      if (openedRecipe?.id == recipe.id) openedRecipe = null;
+    });
+    savePreferences();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Rezept wird nicht mehr vorgeschlagen.'),
+      action: SnackBarAction(label: 'Rückgängig', onPressed: () {
+        update(() => hiddenRecipes.remove(recipe.id));
+        savePreferences();
+      }),
+    ));
+  }
+
   void recipeMenu(Recipe recipe) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Column(
+          child: SingleChildScrollView(child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
@@ -406,6 +206,22 @@ extension _MiseViews on _PlanningPageState {
                 onTap: () {
                   Navigator.pop(context);
                   details(recipe);
+                },
+              ),
+              ListTile(
+                title: Text(rememberedRecipes.contains(recipe.id) ? 'Nicht mehr merken' : 'Merken'),
+                leading: Icon(rememberedRecipes.contains(recipe.id) ? Icons.bookmark : Icons.bookmark_border),
+                onTap: () {
+                  Navigator.pop(context);
+                  toggleRecipePreference(rememberedRecipes, recipe);
+                },
+              ),
+              ListTile(
+                title: Text(favoriteRecipes.contains(recipe.id) ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'),
+                leading: Icon(favoriteRecipes.contains(recipe.id) ? Icons.favorite : Icons.favorite_border),
+                onTap: () {
+                  Navigator.pop(context);
+                  toggleRecipePreference(favoriteRecipes, recipe);
                 },
               ),
               ListTile(
@@ -419,30 +235,15 @@ extension _MiseViews on _PlanningPageState {
                       },
               ),
               ListTile(
-                title: const Text('Nicht vorschlagen'),
+                title: const Text('Nicht mehr vorschlagen'),
                 leading: const Icon(Icons.visibility_off_outlined),
                 onTap: () {
                   Navigator.pop(context);
-                  update(() => hiddenRecipes.add(recipe.id));
-                  savePreferences();
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                        'Rezept wird nicht mehr vorgeschlagen.',
-                      ),
-                      action: SnackBarAction(
-                        label: 'Rückgängig',
-                        onPressed: () {
-                          update(() => hiddenRecipes.remove(recipe.id));
-                          savePreferences();
-                        },
-                      ),
-                    ),
-                  );
+                  stopSuggestingRecipe(recipe);
                 },
               ),
             ],
-          ),
+          )),
         ),
       ),
     );
@@ -505,6 +306,9 @@ extension _MiseViews on _PlanningPageState {
             ),
           ),
         ),
+        if (!featured)
+          TextButton.icon(onPressed: () => recipeMenu(recipe),
+            icon: const Icon(Icons.more_horiz), label: const Text('Aktionen')),
         if (featured)
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
@@ -554,6 +358,26 @@ extension _MiseViews on _PlanningPageState {
   Widget recipePhoto(Recipe recipe, {required double height}) => RecipeImage(recipeImageSource(recipe), height: height, semanticLabel: 'Rezeptbild für ${recipe.name}');
 
   List<Widget> recipeDetail(Recipe recipe) {
+    Widget action(String label, IconData icon, VoidCallback? onPressed, {bool selected = false}) => Expanded(
+      child: Semantics(
+        selected: selected,
+        child: TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
+            minimumSize: const Size(0, 64),
+            foregroundColor: selected ? AppColors.sage : AppColors.lightText,
+            backgroundColor: selected ? AppColors.softGreen : Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 22),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
+          ]),
+        ),
+      ),
+    );
     final inStock = recipe.ingredients
         .where(
           (item) => pantry.any(
@@ -574,10 +398,11 @@ extension _MiseViews on _PlanningPageState {
       gap(8),
       ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: recipePhoto(recipe, height: 240),
+        child: recipePhoto(recipe, height: recipeImageSource(recipe) == null ? 104 : 240),
       ),
       gap(6),
-      Text('Stockfoto · Serviervorschlag', style: muted.copyWith(fontSize: 10)),
+      if (recipeImageSource(recipe) != null)
+        Text(recipeImageCaption(recipe), style: muted.copyWith(fontSize: 10)),
       gap(16),
       Text(
         inStock > 0 ? 'DEIN VORRAT KOCHT MIT' : 'FRISCH AUF DEINEN TELLER',
@@ -590,35 +415,34 @@ extension _MiseViews on _PlanningPageState {
       ),
       gap(8),
       title(recipe.name),
+      gap(8),
+      Text('${recipe.minutes} Min. · ${recipe.ingredients.length} Zutaten', style: muted),
+      gap(12),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: () => openCooking(recipe, portions: detailServings),
+          icon: const Icon(Icons.restaurant_outlined),
+          label: const Text('Jetzt kochen'),
+        ),
+      ),
+      gap(8),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        action(rememberedRecipes.contains(recipe.id) ? 'Gemerkt' : 'Merken',
+          rememberedRecipes.contains(recipe.id) ? Icons.bookmark : Icons.bookmark_border,
+          () => toggleRecipePreference(rememberedRecipes, recipe), selected: rememberedRecipes.contains(recipe.id)),
+        action('Favorit', favoriteRecipes.contains(recipe.id) ? Icons.favorite : Icons.favorite_border,
+          () => toggleRecipePreference(favoriteRecipes, recipe), selected: favoriteRecipes.contains(recipe.id)),
+        action('Einplanen', Icons.calendar_month_outlined,
+          saving || loading || loadError != null ? null : () => addRecipe(recipe, portions: detailServings)),
+        action('Ausblenden', Icons.visibility_off_outlined, () => stopSuggestingRecipe(recipe)),
+      ]),
       if (personalRecipeRecord(recipe.id) != null) ...[
         gap(12),
         if ((personalRecipeRecord(recipe.id)!['source'] as String? ?? '').isNotEmpty) SelectableText('Quelle: ${personalRecipeRecord(recipe.id)!['source']}', style: muted),
         if ((personalRecipeRecord(recipe.id)!['notes'] as String? ?? '').isNotEmpty) ExpansionTile(tilePadding: EdgeInsets.zero, title: const Text('Private Notizen'), children: [Align(alignment: Alignment.centerLeft, child: SelectableText(personalRecipeRecord(recipe.id)!['notes'] as String, style: muted))]),
       ],
       if (personalRecipes.any((r) => (r['recipe'] as Map)['id'] == recipe.id)) TextButton(onPressed: () => editPersonalRecipe(personalRecipes.firstWhere((r) => (r['recipe'] as Map)['id'] == recipe.id)), child: const Text('Eigenes Rezept bearbeiten')),
-      TextButton.icon(onPressed: () => openCooking(recipe, portions: detailServings), icon: const Icon(Icons.restaurant_outlined), label: const Text('Dieses Gericht kochen')),
-      gap(6),
-      Text(
-        '${recipe.minutes} Min. · ${recipe.servings} Portionen im Original',
-        style: muted,
-      ),
-      gap(18),
-      panel(
-        Row(
-          children: [
-            const Icon(Icons.schedule_outlined, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '${recipe.minutes} Minuten',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Text('${recipe.ingredients.length} Zutaten', style: muted),
-          ],
-        ),
-        color: AppColors.softGreen,
-      ),
       gap(20),
       Row(
         children: [
@@ -824,7 +648,30 @@ extension _MiseViews on _PlanningPageState {
     );
   }
 
-  Widget weekPicker() => Row(
+  Future<void> pickPlanWeek() async {
+    if (saving || loading) return;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: week,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Woche auswählen',
+      confirmText: 'Woche öffnen',
+      cancelText: 'Abbrechen',
+    );
+    if (picked == null || !mounted) return;
+    final target = mondayOf(picked);
+    final offset = DateTime.utc(target.year, target.month, target.day)
+        .difference(DateTime.utc(week.year, week.month, week.day)).inDays ~/ 7;
+    if (offset != 0) await changeWeek(offset);
+  }
+
+  Widget weekPicker() {
+    final current = mondayOf(pantryToday);
+    final offset = DateTime.utc(week.year, week.month, week.day)
+        .difference(DateTime.utc(current.year, current.month, current.day)).inDays ~/ 7;
+    final label = offset == 0 ? 'Diese Woche' : offset == 1 ? 'Nächste Woche' : offset == -1 ? 'Letzte Woche' : offset > 1 ? 'In $offset Wochen' : 'Vor ${-offset} Wochen';
+    return Column(children: [Row(
     children: [
       IconButton(
         tooltip: 'Vorherige Woche',
@@ -832,10 +679,15 @@ extension _MiseViews on _PlanningPageState {
         icon: const Icon(Icons.chevron_left),
       ),
       Expanded(
-        child: Text(
-          '${displayDate(week)} – ${displayDate(week.add(const Duration(days: 6)))}',
-          textAlign: TextAlign.center,
-          style: muted,
+        child: TextButton(
+          onPressed: saving || loading ? null : pickPlanWeek,
+          child: Column(children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 3),
+            Text('${displayDate(week)} – ${displayDate(DateTime(week.year, week.month, week.day + 6))}', textAlign: TextAlign.center, style: muted),
+            const SizedBox(height: 3),
+            const Text('Woche auswählen', style: TextStyle(fontSize: 11)),
+          ]),
         ),
       ),
       IconButton(
@@ -844,9 +696,21 @@ extension _MiseViews on _PlanningPageState {
         icon: const Icon(Icons.chevron_right),
       ),
     ],
-  );
+    ),
+    if (offset != 0) TextButton(
+      onPressed: saving || loading ? null : () => changeWeek(-offset),
+      child: const Text('Zur aktuellen Woche'),
+    ),
+    ]);
+  }
 
   List<Widget> planView() => [
+    title('Deine Woche'),
+    gap(12),
+    weekPicker(),
+    gap(12),
+    weekActionCard(),
+    gap(18),
     primary('Wochenplan bearbeiten', editExistingPlan),
     gap(12),
     TextButton(
@@ -855,14 +719,11 @@ extension _MiseViews on _PlanningPageState {
     ),
     Row(
       children: [
-        Expanded(child: title('Deine Woche')),
-        TextButton(onPressed: editBudget, child: const Text('Anpassen')),
+        Expanded(child: Text('Wochenübersicht', style: Theme.of(context).textTheme.titleLarge)),
+        TextButton(onPressed: editBudget, child: const Text('Budget')),
       ],
     ),
-    weekPicker(),
     gap(12),
-    budgetCard(),
-    gap(20),
     Row(
       children: [
         for (var i = 0; i < 7; i++)
@@ -935,9 +796,6 @@ extension _MiseViews on _PlanningPageState {
     gap(18),
     primary('Zum Wocheneinkauf', () => selectTab(3)),
     gap(24),
-    section('Deine Woche im Überblick'),
-    for (var i = 0; i < 7; i++)
-      if (i != selectedDay) ...[dayCard(i), gap(12)],
     Text('${plan.length} von 7 Tagen', style: muted),
     if (widget.store != null || widget.client != null) ...[
       gap(14),
@@ -1306,7 +1164,7 @@ extension _MiseViews on _PlanningPageState {
                 saving
                     ? 'Wird gespeichert …'
                     : saveError != null
-                    ? 'Nicht gespeichert'
+                    ? weekSaveUncertain ? 'Speicherstand unklar' : 'Nicht gespeichert'
                     : loading
                     ? 'Wird geladen …'
                     : 'Gespeichert',

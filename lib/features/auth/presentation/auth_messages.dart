@@ -1,5 +1,12 @@
 import 'package:supabase/supabase.dart';
 
+String? validateName(String? input, String label) {
+  final value = input?.trim() ?? '';
+  if (value.isEmpty) return 'Bitte gib deinen $label ein.';
+  if (value.runes.length > 100) return 'Bitte verwende höchstens 100 Zeichen.';
+  return null;
+}
+
 String? validateEmail(String? input) {
   final value = input?.trim() ?? '';
   if (value.isEmpty) return 'Bitte gib deine E-Mail-Adresse ein.';

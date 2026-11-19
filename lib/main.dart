@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'features/recipes/data/supabase_recipe_repository.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   const url = AppConfig.url;
   const key = AppConfig.publishableKey;
   if (AppConfig.useDemo) {
