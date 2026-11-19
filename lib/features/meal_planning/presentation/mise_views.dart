@@ -109,58 +109,8 @@ extension _MiseViews on _PlanningPageState {
         if (!readOnlyShared && tab == 2 && pantryPage != 0) pantryActionBar(),
         if (tab == 4 && householdPage > 0 && (householdDemoJoined || householdPage >= 5)) householdActionBar(),
         ],
-        SafeArea(
-      top: false,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFF0F0EB))),
-        ),
-        child: Row(
-          children: [
-            nav(5, 'Start', Icons.home_outlined),
-            nav(0, 'Rezepte', Icons.menu_book_outlined),
-            nav(1, 'Plan', Icons.calendar_month_outlined),
-            nav(2, 'Vorrat', Icons.kitchen_outlined),
-            nav(3, 'Korb', Icons.shopping_cart_outlined),
-          ],
-        ),
-      ),
-    ),
+        AppBottomNavigation(selectedTab: tab, onSelect: selectTab),
       ],
-    ),
-  );
-
-  Widget nav(int index, String label, IconData icon, {bool enabled = true}) => Expanded(
-    child: Semantics(
-      selected: tab == index,
-      button: true,
-      enabled: enabled,
-      child: InkWell(
-        onTap: enabled ? () => selectTab(index) : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 23,
-                color: !enabled ? AppColors.muted.withValues(alpha: 0.35) : tab == index ? AppColors.sage : AppColors.muted,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: !enabled ? AppColors.muted.withValues(alpha: 0.35) : tab == index ? AppColors.sage : AppColors.muted,
-                  fontWeight: tab == index ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     ),
   );
 

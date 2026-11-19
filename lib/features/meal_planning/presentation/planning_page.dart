@@ -7,6 +7,7 @@ import '../../auth/data/session_storage.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'app_bottom_navigation.dart';
 
 import '../../recipes/data/admin_recipe_repository.dart';
 import '../../recipes/data/supabase_recipe_repository.dart';
