@@ -79,8 +79,6 @@ extension _PlanningSurvey on _PlanningPageState {
       gap(5),
       Text('Ein guter Plan beginnt mit deinem Geschmack.', style: muted),
       gap(12),
-      weekPicker(),
-      gap(12),
       weekActionCard(),
       gap(18),
       panel(

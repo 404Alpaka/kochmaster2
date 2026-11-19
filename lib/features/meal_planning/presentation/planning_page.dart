@@ -575,7 +575,22 @@ class _PlanningPageState extends State<PlanningPage> {
   }
 
   Future<void> changeWeek(int delta) async {
-    if (saving || loading) return;
+    if (saving || loading || delta == 0) return;
+    if (draft != null) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Woche wechseln?'),
+          content: const Text('Dein unbestätigter Vorschlag wird verworfen. Bereits gespeicherte Wochenpläne bleiben erhalten.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hier bleiben')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Woche wechseln')),
+          ],
+        ),
+      );
+      if (discard != true || !mounted || saving || loading) return;
+    }
+    final previousSurveyStep = surveyStep;
     localWeekCache[dateKey(week)] = WeeklyPlan(
       meals: Map<int, PlannedMeal>.from(plan),
       checked: Set<(String, String)>.from(checked),
@@ -585,6 +600,11 @@ class _PlanningPageState extends State<PlanningPage> {
       selectedDay = dateKey(week) == dateKey(mondayOf(pantryToday))
           ? pantryToday.weekday - 1 : 0;
       draft = null;
+      editingPlan = false;
+      swappingDay = null;
+      selectedReplacement = null;
+      acceptedDays.clear();
+      changedProposalDays.clear();
       proposalConfirmed = false;
       surveyStep = 0;
       plan.clear();
@@ -600,6 +620,9 @@ class _PlanningPageState extends State<PlanningPage> {
           checked.addAll(cached.checked);
         });
       }
+    }
+    if (mounted && previousSurveyStep > 0 && previousSurveyStep <= 5 && loadError == null) {
+      update(() => surveyStep = previousSurveyStep);
     }
   }
 

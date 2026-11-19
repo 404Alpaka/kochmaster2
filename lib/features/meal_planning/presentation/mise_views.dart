@@ -50,8 +50,16 @@ extension _MiseViews on _PlanningPageState {
     openedRecipe = null;
   });
 
+  bool get hasBottomAction => cookingPage > 0 ||
+      (!readOnlyShared && cookingPage == 0 && (
+        showPlanningAction || showProposalAction ||
+        (tab == 3 && shoppingPage != 1) ||
+        (tab == 2 && pantryPage != 0))) ||
+      (cookingPage == 0 && tab == 0 && collectionPage > 0 && openedRecipe == null) ||
+      (cookingPage == 0 && tab == 4 && householdPage > 0 && (householdDemoJoined || householdPage >= 5));
+
   Widget miseScaffold() => Scaffold(
-    extendBody: true,
+    extendBody: !hasBottomAction,
     body: SafeArea(
       bottom: false,
       child: Center(
@@ -72,6 +80,8 @@ extension _MiseViews on _PlanningPageState {
                     : recipeDetail(openedRecipe!),
               if(readOnlyShared && tab>=1 && tab<=3) ...sharedReadOnlyFlow(),
               if (!readOnlyShared && tab == 1) ...[
+                weekPicker(),
+                gap(16),
                 if (nextWeekHints.containsKey(dateKey(week))) ...[surveyCard('Deine Wünsche für diese Woche', nextWeekHints[dateKey(week)]!['note'] as String? ?? '', color: AppColors.softGreen), gap(14), if (nextWeekHints[dateKey(week)]!['checkPrepared'] == true) ...[recipeAction('Vorhandene Mahlzeiten prüfen →', false, openPreparedMeals), gap(14)]],
                 ...planningFlow(),
               ],
@@ -99,7 +109,10 @@ extension _MiseViews on _PlanningPageState {
         ),
       ),
     ),
-    bottomNavigationBar: Column(
+    bottomNavigationBar: Container(
+      key: const ValueKey('app-bottom-dock'),
+      color: hasBottomAction ? Theme.of(context).scaffoldBackgroundColor : null,
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (cookingPage > 0) cookingActionBar(),
@@ -113,6 +126,7 @@ extension _MiseViews on _PlanningPageState {
         ],
         AppBottomNavigation(selectedTab: tab, onSelect: selectTab),
       ],
+      ),
     ),
   );
 
@@ -658,8 +672,6 @@ extension _MiseViews on _PlanningPageState {
 
   List<Widget> planView() => [
     title('Deine Woche'),
-    gap(12),
-    weekPicker(),
     gap(12),
     weekActionCard(),
     gap(18),

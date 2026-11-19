@@ -79,6 +79,43 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('Datumsauswahl öffnet Zielwoche und schützt den Entwurf', (tester) async {
+    final store = MemoryWeekStore();
+    final target = DateTime(2027, 1, 11);
+    await store.save(target, WeeklyPlan(meals: {0: PlannedMeal(recipes.last, 3)}));
+    await open(tester, store);
+    await tester.tap(find.text('Woche auswählen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '01/11/2027');
+    await tester.tap(find.text('Woche öffnen'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('11.1.2027 – 17.1.2027'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Wochenplan bearbeiten'), 150,
+      scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wochenplan bearbeiten'));
+    await tester.pumpAndSettle();
+    expect(find.text('Woche auswählen'), findsOneWidget);
+    await tester.tap(find.byTooltip('Nächste Woche'));
+    await tester.pumpAndSettle();
+    expect(find.text('Woche wechseln?'), findsOneWidget);
+    await tester.tap(find.text('Hier bleiben'));
+    await tester.pumpAndSettle();
+    expect(find.text('Wochenplan bestätigen'), findsOneWidget);
+    await tester.tap(find.byTooltip('Nächste Woche'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Woche wechseln'));
+    await tester.pumpAndSettle();
+    expect(find.text('Wochenplan erstellen'), findsOneWidget);
+    expect(find.textContaining('18.1.2027 – 24.1.2027'), findsWidgets);
+    expect(store.rows[dateKey(target)], isNotNull);
+    expect(store.rows[dateKey(DateTime(2027, 1, 18))], isNull);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('Startseite startet das heutige Gericht mit geplanten Portionen', (tester) async {
     final store = MemoryWeekStore();
     await store.save(week, WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 4)}));

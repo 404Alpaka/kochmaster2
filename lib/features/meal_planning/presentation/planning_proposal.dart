@@ -91,9 +91,9 @@ extension _PlanningProposal on _PlanningPageState {
         Expanded(child: dayAction(meal == null ? 'Gericht wählen' : 'Anderes Gericht', false, () => swapProposal(day))),
         if (meal != null) ...[
           const SizedBox(width: 6),
-          Expanded(child: dayAction('Tag freilassen', false, () => update(() {
+          Expanded(child: KeyedSubtree(key: ValueKey('proposal-free-$day'), child: dayAction('Tag freilassen', false, () => update(() {
             draft!.remove(day); acceptedDays.remove(day); changedProposalDays.add(day);
-          }))),
+          })))),
         ],
       ]),
     ]), padding: const EdgeInsets.all(16));
