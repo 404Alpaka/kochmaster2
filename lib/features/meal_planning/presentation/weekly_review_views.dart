@@ -107,6 +107,12 @@ extension _WeeklyReviewViews on _PlanningPageState {
     final estimate = (reviewDraft['estimate'] as String? ?? '').trim();
     final wasteValid = wasteDraftRows.every((r) => (r['name'] as String).trim().isNotEmpty && (r['unit'] as String).trim().isNotEmpty && validNonnegative(r['quantity']) && reviewNumber(r['quantity'])! > 0);
     if (!expensesValid || !completeValid || !wasteValid || (estimate.isNotEmpty && !validNonnegative(estimate))) { update(() => reviewError = 'Bitte gültige Beträge und positive Abfallmengen mit Namen und Einheit eintragen. Vollständige Einkäufe dürfen keine fehlenden Beträge enthalten.'); return; }
+    for(final day in reviewedCookingDays) {
+      final key = 'review:${dateKey(week.add(Duration(days:day)))}:${plan[day]!.recipe.id}';
+      final status = (reviewDraft['statuses'] as Map)['$day'];
+      cookingHistory.removeWhere((h) => h['key'] == key);
+      if(status == 'cooked') cookingHistory.add({'key':key, 'date':dateKey(week.add(Duration(days:day))), 'recipeId':plan[day]!.recipe.id, 'name':plan[day]!.recipe.name, 'portions':plan[day]!.servings, 'savedLeftovers':0, 'source':'review'});
+    }
     update(() { weeklyReviews[dateKey(week)] = Map<String, dynamic>.from(jsonDecode(jsonEncode(reviewDraft)) as Map); householdPage = 11; }); savePreferences();
   }
 

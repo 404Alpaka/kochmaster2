@@ -1,6 +1,108 @@
 part of 'planning_page.dart';
 
 extension _HomeViews on _PlanningPageState {
+  Future<bool> editFoodPreferences() async {
+    final result = await Navigator.of(context).push<FoodPreferences>(
+      MaterialPageRoute(
+        builder: (_) => FoodPreferencesPage(
+          initial: FoodPreferences(
+            diet: diet,
+            exclusions: {...exclusions},
+            servings: servings,
+            days: planningDays,
+            minutes: maxMinutes,
+            budget: planBudgetInitialized ? planBudget : budget,
+          ),
+        ),
+      ),
+    );
+    if (result == null || !mounted) return false;
+    update(() {
+      diet = result.diet;
+      exclusions
+        ..clear()
+        ..addAll(result.exclusions);
+      servings = result.servings;
+      planningDays = result.days;
+      startDay = startDay.clamp(0, 7 - planningDays);
+      maxMinutes = result.minutes;
+      planBudget = result.budget;
+      planBudgetInitialized = true;
+      if (result.budget != null) budget = result.budget!;
+      surveyCompleted = true;
+    });
+    savePreferences();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Präferenzen für neue Wochenplanvorschläge übernommen.'),
+      ),
+    );
+    return true;
+  }
+
+  Widget foodPreferencesCard() => LayoutBuilder(
+    builder: (context, constraints) => ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: constraints.maxWidth < 380 ? constraints.maxWidth : 320,
+      ),
+      child: Material(
+        color: AppColors.sage,
+        borderRadius: BorderRadius.circular(26),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('food-preferences-card'),
+          onTap: editFoodPreferences,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.tune_rounded, color: Colors.white, size: 34),
+                    Spacer(),
+                    Icon(Icons.arrow_outward_rounded, color: Colors.white),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const Text(
+                  'So isst du',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Deine Wünsche. Dein Wochenplan.',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '$diet · $servings ${servings == 1 ? 'Person' : 'Personen'} · $planningDays Tage',
+                  style: const TextStyle(color: Colors.white, height: 1.5),
+                ),
+                Text(
+                  '${maxMinutes == 0 ? 'Flexible Kochzeit' : 'Bis $maxMinutes Min.'} · ${planBudgetInitialized && planBudget == null ? 'Ohne Budgetlimit' : '${euro(planBudgetInitialized ? planBudget! : budget)} pro Woche'}',
+                  style: const TextStyle(color: Colors.white, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Essenspräferenzen festlegen →',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
   void openHomeHousehold() {
     selectTab(4);
     update(() => householdPage = 0);
@@ -13,8 +115,13 @@ extension _HomeViews on _PlanningPageState {
     selectTab(1);
     update(() => selectedDay = today.weekday - 1);
     if (dateKey(week) != dateKey(currentWeek)) {
-      final offset = DateTime.utc(currentWeek.year, currentWeek.month, currentWeek.day)
-          .difference(DateTime.utc(week.year, week.month, week.day)).inDays ~/ 7;
+      final offset =
+          DateTime.utc(
+            currentWeek.year,
+            currentWeek.month,
+            currentWeek.day,
+          ).difference(DateTime.utc(week.year, week.month, week.day)).inDays ~/
+          7;
       await changeWeek(offset);
       if (!mounted) return;
     }
@@ -116,10 +223,11 @@ extension _HomeViews on _PlanningPageState {
                     Expanded(
                       child: homeShortcut(
                         title: 'Kochen starten',
-                          subtitle: todayMeal?.recipe.name ??
-                              (dateKey(week) == dateKey(mondayOf(today))
-                                  ? 'Heute noch nichts geplant'
-                                  : 'Heutigen Plan öffnen'),
+                        subtitle:
+                            todayMeal?.recipe.name ??
+                            (dateKey(week) == dateKey(mondayOf(today))
+                                ? 'Heute noch nichts geplant'
+                                : 'Heutigen Plan öffnen'),
                         icon: Icons.restaurant_outlined,
                         recipe: todayMeal?.recipe,
                         color: AppColors.cream,
@@ -135,6 +243,7 @@ extension _HomeViews on _PlanningPageState {
         ),
       ),
       gap(28),
+      if (!surveyCompleted) ...[foodPreferencesCard(), gap(28)],
       section(
         'Dein Rezept des Tages',
         action: TextButton(

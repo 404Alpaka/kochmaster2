@@ -63,6 +63,13 @@ class Recipe {
     this.verifiedDiets,
     this.categories = const {},
     this.favoriteCount = 0,
+    this.primarySide,
+    this.dishType,
+    this.mainIngredient,
+    this.activeMinutes,
+    this.preparationMethod,
+    this.flavors = const {},
+    this.costClass,
   });
   final String id;
   final String name;
@@ -77,6 +84,25 @@ class Recipe {
   final Set<String>? verifiedDiets;
   final Set<String> categories;
   final int favoriteCount;
+  final String? primarySide,
+      dishType,
+      mainIngredient,
+      preparationMethod,
+      costClass;
+  final int? activeMinutes;
+  final Set<String> flavors;
+}
+
+/// The current product plans dinners. Keep breakfast recipes in the catalog
+/// for administration and future meal slots, but omit them from dinner discovery.
+bool isDinnerRecipe(Recipe recipe) {
+  if (recipe.categories.contains('breakfast')) return false;
+  // Older/imported recipes can lack categories. Recognize explicit breakfast
+  // dish names, never ingredient names (oats can also be used in dinner dishes).
+  return !RegExp(
+    r'\b(porridge|proddige|haferbrei|oatmeal|overnight[ -]+oats|müsli|muesli|granola)\b',
+    caseSensitive: false,
+  ).hasMatch(recipe.name);
 }
 
 abstract interface class RecipeRepository {
@@ -84,6 +110,13 @@ abstract interface class RecipeRepository {
 }
 
 Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
+  'primary_side': recipe.primarySide,
+  'dish_type': recipe.dishType,
+  'main_ingredient': recipe.mainIngredient,
+  'active_minutes': recipe.activeMinutes,
+  'preparation_method': recipe.preparationMethod,
+  'flavors': recipe.flavors.toList(),
+  'cost_class': recipe.costClass,
   'id': recipe.id,
   'name': recipe.name,
   'minutes': recipe.minutes,
@@ -105,6 +138,13 @@ Map<String, dynamic> recipeSnapshot(Recipe recipe) => {
   ],
 };
 Recipe recipeFromSnapshot(Map<String, dynamic> data) => Recipe(
+  primarySide: data['primary_side'] as String?,
+  dishType: data['dish_type'] as String?,
+  mainIngredient: data['main_ingredient'] as String?,
+  activeMinutes: data['active_minutes'] as int?,
+  preparationMethod: data['preparation_method'] as String?,
+  flavors: (data['flavors'] as List?)?.cast<String>().toSet() ?? {},
+  costClass: data['cost_class'] as String?,
   id: data['id'] as String,
   name: data['name'] as String,
   minutes: data['minutes'] as int,

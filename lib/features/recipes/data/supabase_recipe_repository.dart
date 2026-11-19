@@ -36,6 +36,13 @@ class SupabaseRecipeRepository implements RecipeRepository {
 
 Recipe recipeFromRow(Map<String, dynamic> row, {int favoriteCount = 0}) =>
     Recipe(
+      primarySide: row['primary_side'] as String?,
+      dishType: row['dish_type'] as String?,
+      mainIngredient: row['main_ingredient'] as String?,
+      activeMinutes: row['active_minutes'] as int?,
+      preparationMethod: row['preparation_method'] as String?,
+      flavors: (row['flavors'] as List?)?.cast<String>().toSet() ?? {},
+      costClass: row['cost_class'] as String?,
       id: row['id'] as String,
       name: row['name'] as String,
       minutes: row['prep_minutes'] as int,

@@ -7,9 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../data/admin_recipe_repository.dart';
+import '../data/ingredient_suggestions.dart';
 import '../data/recipe_image_uploader.dart';
 import '../domain/recipe.dart';
 import 'recipe_image.dart';
+import 'ingredient_search_sheet.dart';
 import '../../../core/theme/app_theme.dart';
 
 class _IngredientForm {
@@ -78,6 +80,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   Set<String>? allergens;
   Set<String>? diets;
   final categories = <String>{};
+  Map<String, dynamic> planningMetadata = {};
   bool loading = true;
   bool catalogReady = false;
   bool busy = false;
@@ -96,6 +99,19 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
       allergens = existing.recipe.verifiedAllergens?.toSet();
       diets = existing.recipe.verifiedDiets?.toSet();
       categories.addAll(existing.recipe.categories);
+      final snapshot = recipeSnapshot(existing.recipe);
+      planningMetadata = {
+        for (final key in [
+          'primary_side',
+          'dish_type',
+          'main_ingredient',
+          'active_minutes',
+          'preparation_method',
+          'flavors',
+          'cost_class',
+        ])
+          key: snapshot[key],
+      };
       rows.addAll(
         existing.recipe.ingredients.map(
           (i) => _IngredientForm(
@@ -174,6 +190,24 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   Future<void> save() async {
     if (busy || pickingPhoto) return;
     if (!form.currentState!.validate()) return;
+    if (name.text.trim().isEmpty ||
+        positiveInteger(minutes.text, 1440) != null ||
+        positiveInteger(servings.text, 100) != null ||
+        steps.text.trim().isEmpty ||
+        rows.isEmpty ||
+        rows.any(
+          (row) =>
+              ingredientLabel(row).isEmpty ||
+              amount(row.amount.text) == null ||
+              !amount(row.amount.text)!.isFinite ||
+              amount(row.amount.text)! <= 0 ||
+              amount(row.amount.text)! > 1000000,
+        )) {
+      setState(
+        () => error = 'Bitte Rezeptname, Zeit, Portionen, Zutaten mit Mengen und mindestens einen Zubereitungsschritt ausfüllen.',
+      );
+      return;
+    }
     if (encodedSteps().contains('⟦') ||
         encodedSteps().contains('[Zutat entfernt]')) {
       setState(
@@ -223,6 +257,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
         'verified_allergens': allergens?.toList(),
         'verified_diets': diets?.toList(),
         'categories': categories.toList(),
+        ...planningMetadata,
         'ingredients': [
           for (final row in rows)
             {
@@ -269,6 +304,72 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     }
     return row.name.text.trim();
   }
+
+  Future<void> searchIngredient(_IngredientForm row) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final selected = await showModalBottomSheet<CatalogIngredient>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: .9,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: IngredientSearchSheet(
+            catalog: catalog,
+            selectedId: row.id,
+            initialQuery: row.id == null ? row.name.text : '',
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null || !rows.contains(row)) return;
+    setState(() {
+      row.id = selected.id.isEmpty ? null : selected.id;
+      row.name.text = selected.name;
+      refreshLinkedSteps();
+    });
+  }
+
+  Widget inlineIngredientSuggestions(_IngredientForm row, int index) =>
+      ValueListenableBuilder<TextEditingValue>(
+        valueListenable: row.name,
+        builder: (context, value, _) {
+          final suggestions = suggestIngredients(catalog, value.text);
+          if (suggestions.isEmpty) return const SizedBox.shrink();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'Vorhandene Zutaten',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              for (final item in suggestions)
+                ListTile(
+                  key: ValueKey('ingredient-suggestion-$index-${item.id}'),
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  leading: const Icon(Icons.restaurant_outlined, size: 20),
+                  title: Text(item.name),
+                  trailing: const Icon(Icons.add, size: 18),
+                  onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    setState(() {
+                      row.id = item.id;
+                      row.name.text = item.name;
+                      refreshLinkedSteps();
+                    });
+                  },
+                ),
+            ],
+          );
+        },
+      );
 
   String rowText(_IngredientForm row) {
     final quantity = amount(row.amount.text);
@@ -615,46 +716,57 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     ),
     child: Material(
       color: Colors.transparent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+      child: number == '05'
+          ? ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: Text(title),
+              subtitle: const Text('Optional · nur nach Prüfung ausfüllen'),
+              children: [
+                Text(description),
+                const SizedBox(height: 12),
+                ...children,
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        number,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  number,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                const SizedBox(height: 10),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: AppColors.muted),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            description,
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: AppColors.muted),
-          ),
-          const SizedBox(height: 18),
-          ...children,
-        ],
-      ),
+                const SizedBox(height: 18),
+                ...children,
+              ],
+            ),
     ),
   );
 
@@ -672,7 +784,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                 if (pendingPhoto != null)
                   Image.memory(
                     pendingPhoto!.bytes,
-                    height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
+                    height: MediaQuery.sizeOf(context).width < 600 ? 140 : 220,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     semanticLabel: 'Ausgewähltes Rezeptfoto',
@@ -681,7 +793,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                   RecipeImage(
                     imageUrl,
                     key: const ValueKey('editor-recipe-image'),
-                    height: MediaQuery.sizeOf(context).width < 600 ? 220 : 300,
+                    height: MediaQuery.sizeOf(context).width < 600 ? 140 : 220,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     semanticLabel: 'Rezeptbild',
@@ -755,6 +867,24 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
+      bottomNavigationBar: catalogReady
+          ? ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  child: FilledButton.icon(
+                    onPressed: busy || pickingPhoto ? null : save,
+                    icon: const Icon(Icons.check),
+                    label: Text(
+                      busy ? 'Wird gespeichert …' : 'Rezept speichern',
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
       appBar: AppBar(
         actions: [
           if (MediaQuery.viewInsetsOf(context).bottom > 0)
@@ -898,29 +1028,19 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                                   child: Column(
                                     children: [
                                       const SizedBox(height: 4),
-                                      DropdownButtonFormField<String>(
-                                        initialValue: rows[i].id ?? '__new__',
-                                        isExpanded: true,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Zutat auswählen',
-                                        ),
-                                        items: [
-                                          const DropdownMenuItem(
-                                            value: '__new__',
-                                            child: Text('Neue Zutat anlegen'),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          key: ValueKey('ingredient-picker-$i'),
+                                          onPressed: () =>
+                                              searchIngredient(rows[i]),
+                                          icon: const Icon(Icons.search),
+                                          label: Text(
+                                            rows[i].id == null
+                                                ? 'Zutat suchen oder auswählen'
+                                                : ingredientLabel(rows[i]),
                                           ),
-                                          for (final ingredient in catalog)
-                                            DropdownMenuItem(
-                                              value: ingredient.id,
-                                              child: Text(ingredient.name),
-                                            ),
-                                        ],
-                                        onChanged: (v) => setState(() {
-                                          rows[i].id = v == '__new__'
-                                              ? null
-                                              : v;
-                                          refreshLinkedSteps();
-                                        }),
+                                        ),
                                       ),
                                       if (rows[i].id == null) ...[
                                         const SizedBox(height: 12),
@@ -934,13 +1054,14 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                                           controller: rows[i].name,
                                           maxLength: 120,
                                           decoration: const InputDecoration(
-                                            labelText: 'Name der neuen Zutat',
+                                            labelText: 'Zutat eingeben',
                                           ),
                                           validator: (v) =>
                                               (v ?? '').trim().isEmpty
                                               ? 'Bitte eine Zutat angeben.'
                                               : null,
                                         ),
+                                        inlineIngredientSuggestions(rows[i], i),
                                       ],
                                       const SizedBox(height: 12),
                                       TextFormField(
@@ -1076,6 +1197,162 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                           ],
                         ),
                         sectionCard(
+                          'P',
+                          'Planungsmerkmale',
+                          'Nur geprüfte Angaben eintragen. Leere Felder bleiben unbekannt.',
+                          [
+                            DropdownButtonFormField<String>(
+                              initialValue:
+                                  planningMetadata['primary_side'] as String?,
+                              decoration: const InputDecoration(
+                                labelText: 'Primäre Hauptbeilage',
+                              ),
+                              items: const [
+                                DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('Unbekannt'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'none',
+                                  child: Text('Keine Hauptbeilage'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'rice',
+                                  child: Text('Reis'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'pasta',
+                                  child: Text('Nudeln'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'potato',
+                                  child: Text('Kartoffeln'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'bread',
+                                  child: Text('Brot'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'couscous',
+                                  child: Text('Couscous'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'bulgur',
+                                  child: Text('Bulgur'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'oats',
+                                  child: Text('Haferflocken'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'other',
+                                  child: Text('Andere'),
+                                ),
+                              ],
+                              onChanged: (v) =>
+                                  planningMetadata['primary_side'] = v,
+                            ),
+                            for (final field in const {
+                              'dish_type': 'Gerichtsart',
+                              'main_ingredient': 'Dominante Hauptzutat',
+                              'preparation_method': 'Zubereitungsart',
+                            }.entries)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: TextFormField(
+                                  initialValue:
+                                      planningMetadata[field.key] as String? ??
+                                      '',
+                                  decoration: InputDecoration(
+                                    labelText: field.value,
+                                  ),
+                                  onChanged: (v) =>
+                                      planningMetadata[field.key] =
+                                          v.trim().isEmpty
+                                          ? null
+                                          : v.trim().toLowerCase(),
+                                ),
+                              ),
+                            DropdownButtonFormField<String>(
+                              initialValue:
+                                  planningMetadata['cost_class'] as String?,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Grobe Kostenklasse (optional)',
+                              ),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('Unbekannt'),
+                                ),
+                                const DropdownMenuItem(
+                                  value: 'low',
+                                  child: Text('Günstig'),
+                                ),
+                                const DropdownMenuItem(
+                                  value: 'medium',
+                                  child: Text('Mittel'),
+                                ),
+                                const DropdownMenuItem(
+                                  value: 'high',
+                                  child: Text('Hoch'),
+                                ),
+                                if (planningMetadata['cost_class'] != null &&
+                                    !const {
+                                      'low',
+                                      'medium',
+                                      'high',
+                                    }.contains(planningMetadata['cost_class']))
+                                  DropdownMenuItem(
+                                    value:
+                                        planningMetadata['cost_class']
+                                            as String,
+                                    child: Text(
+                                      planningMetadata['cost_class'] as String,
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) =>
+                                  planningMetadata['cost_class'] = v,
+                            ),
+                            TextFormField(
+                              initialValue:
+                                  planningMetadata['active_minutes']
+                                      ?.toString() ??
+                                  '',
+                              decoration: const InputDecoration(
+                                labelText: 'Aktive Arbeitszeit in Minuten',
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (v) =>
+                                  v == null ||
+                                      v.isEmpty ||
+                                      (int.tryParse(v) != null &&
+                                          int.parse(v) >= 0)
+                                  ? null
+                                  : 'Gültige Minuten eingeben',
+                              onChanged: (v) =>
+                                  planningMetadata['active_minutes'] =
+                                      int.tryParse(v),
+                            ),
+                            TextFormField(
+                              initialValue:
+                                  (planningMetadata['flavors'] as List? ?? [])
+                                      .join(', '),
+                              decoration: const InputDecoration(
+                                labelText:
+                                    'Geschmacksmerkmale, durch Komma getrennt',
+                              ),
+                              onChanged: (v) => planningMetadata['flavors'] = v
+                                  .split(',')
+                                  .map((s) => s.trim().toLowerCase())
+                                  .where((s) => s.isNotEmpty)
+                                  .toSet()
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                        sectionCard(
                           '04',
                           'Kategorien',
                           'Wähle passende Zutatenarten und Mahlzeiten. Mehrfachauswahl ist möglich.',
@@ -1199,13 +1476,6 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                             padding: EdgeInsets.only(bottom: 16),
                             child: LinearProgressIndicator(),
                           ),
-                        FilledButton.icon(
-                          onPressed: busy || pickingPhoto ? null : save,
-                          icon: const Icon(Icons.check),
-                          label: Text(
-                            busy ? 'Wird gespeichert …' : 'Rezept speichern',
-                          ),
-                        ),
                         const SizedBox(height: 12),
                         const Text(
                           'Deine Änderungen werden beim Speichern übernommen.',

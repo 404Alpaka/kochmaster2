@@ -67,6 +67,25 @@ und seit der Prüfung veränderte Rezepte.
 
 ## Verwendung
 
+Beim Tippen ins Zutaten-Namensfeld erscheinen ab zwei Zeichen direkt darunter
+bis zu fünf vorhandene Zutaten. Präfixe, Teilnamen, Umlaute und kleine Schreibfehler
+werden berücksichtigt. Ein Tipp übernimmt die bestehende Zutaten-ID statt eine
+neue Zutat anzulegen. Ohne Auswahl bleibt die Eingabe eine neue Zutat.
+
+Auf der Rezeptseite führt der grüne Plus-Button für Rezept-Admins direkt zum
+Erstellen. Das Aktionsmenü jeder Katalogrezeptkarte bietet zusätzlich Bearbeiten,
+„In Entwürfe verschieben“ und Löschen. Die beiden letzten Aktionen verlangen
+eine Bestätigung. Entwürfe sind nicht öffentlich, gelöschte Rezepte bleiben im
+Papierkorb wiederherstellbar. Persönliche Nutzerrezepte werden darüber nicht verwaltet.
+Im Editor bleibt der Speicherbutton am unteren Rand sichtbar. Geprüfte
+Ernährungsangaben sind optional aufklappbar; neue Rezepte starten als Entwurf.
+
+Bei jeder Zutat öffnet „Zutat suchen oder auswählen“ eine durchsuchbare Liste des
+vorhandenen Zutatenkatalogs. Die Suche ignoriert Groß-/Kleinschreibung und findet
+Umlaute auch als ae/oe/ue. Eine Auswahl übernimmt die bestehende Zutaten-ID und
+erhält Menge und Einheit. Nicht vorhandene Zutaten lassen sich über „neu anlegen“
+vormerken und werden erst mit dem Rezept gespeichert.
+
 Der Editor bietet 21 Kategorien, darunter Eintöpfe, Aufläufe, Backen, Pasta,
 Reisgerichte, Kartoffelgerichte, Brot & Brötchen, Kuchen & Gebäck, Grillen sowie
 Soßen & Dips. Salate bleiben als vorhandene Kategorie erhalten. Für die neuen

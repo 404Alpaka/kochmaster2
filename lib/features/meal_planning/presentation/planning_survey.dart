@@ -97,7 +97,7 @@ extension _PlanningSurvey on _PlanningPageState {
       ),
       gap(18),
       section('Diese könnten dir schmecken'),
-      if (recipes.isNotEmpty)
+      if (dinnerRecipes.isNotEmpty)
         panel(
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -105,23 +105,23 @@ extension _PlanningSurvey on _PlanningPageState {
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 width: 64,
-                child: recipePhoto(recipes.first, height: 70),
+                child: recipePhoto(dinnerRecipes.first, height: 70),
               ),
             ),
-            title: Text(recipes.first.name),
+            title: Text(dinnerRecipes.first.name),
             subtitle: Text(
-              '${recipes.first.minutes} Min. · Rezept kennenlernen →',
+              '${dinnerRecipes.first.minutes} Min. · Rezept kennenlernen →',
             ),
             onTap: () {
               selectTab(0);
-              details(recipes.first);
+              details(dinnerRecipes.first);
             },
           ),
         ),
       gap(18),
       surveyCard(
-        'Beim ersten Mal: 4 kurze Fragen',
-        'Allergien, Ernährung, Personen & Tage, Kochzeit. Danach bestätigst du vor dem Vorschlag dein Planbudget.',
+        'Deine Wünsche einmal festlegen',
+        'Ernährung, Ausschlüsse, Personen, Tage, Kochzeit und Budget – alles auf einer Seite.',
         color: AppColors.softGreen,
       ),
     ];
@@ -164,16 +164,17 @@ extension _PlanningSurvey on _PlanningPageState {
     },
   ];
 
-  bool get showPlanningAction => tab == 1 &&
-      surveyStep > 0;
+  bool get showPlanningAction => tab == 1 && surveyStep > 0;
 
-  void startPlanning() {
+  Future<void> startPlanning() async {
     if (saving || loading) return;
-    if (!planBudgetInitialized) {
-      planBudget = budget;
-      planBudgetInitialized = true;
+    if (!surveyCompleted) {
+      final accepted = await editFoodPreferences();
+      if (!accepted || !mounted) return;
     }
-    update(() => surveyStep = surveyCompleted ? 5 : 1);
+    if (saving || loading) return;
+    deferredRecipes.clear();
+    createProposal();
   }
 
   Widget planningActionBar() {
@@ -182,7 +183,10 @@ extension _PlanningSurvey on _PlanningPageState {
       2 => 'Weiter: Personen & Tage',
       3 => 'Weiter: Kochzeit',
       4 => 'Weiter: Planbudget',
-      5 => planBudget != null && planBudget! < 62.40 ? 'Budgetkonflikt ansehen · Demo' : 'Wochenvorschlag erstellen',
+      5 =>
+        planBudget != null && planBudget! < 62.40
+            ? 'Budgetkonflikt ansehen · Demo'
+            : 'Wochenvorschlag erstellen',
       6 => 'Günstigere Alternativen prüfen',
       7 => 'Änderungen für ${euro(budgetDemoTotal)} übernehmen',
       _ => 'Wochenplan erstellen',
@@ -195,89 +199,78 @@ extension _PlanningSurvey on _PlanningPageState {
       0 => 'Den Vorschlag kannst du danach frei bearbeiten.',
       _ => 'Deine Antworten kannst du später ändern.',
     };
-    return Center(child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 1100),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(width: double.infinity, child: FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
-            onPressed: saving || loading || (surveyStep == 7 && !canApplyBudgetDemo) ? null : () {
-              if (surveyStep == 0) { startPlanning(); return; }
-              if (surveyStep < 5) {
-                if (surveyStep == 4 && !planBudgetInitialized) {
-                  planBudget = budget;
-                  planBudgetInitialized = true;
-                }
-                update(() => surveyStep++);
-                return;
-              }
-              if (surveyStep == 5 && planBudget != null && planBudget! < 62.40) {
-                update(() { budgetDemoSelections.addAll([0, 1, 2, 3]); surveyStep = 6; });
-                return;
-              }
-              if (surveyStep == 6) { update(() => surveyStep = 7); return; }
-              if (surveyStep == 7) { applyBudgetDemo(); return; }
-              surveyCompleted = true;
-              savePreferences();
-              createProposal();
-            },
-            icon: const Icon(Icons.arrow_forward, size: 18),
-            label: Text(label, textAlign: TextAlign.center),
-          )),
-          gap(8),
-          Text(hint, textAlign: TextAlign.center, style: muted.copyWith(fontSize: 12)),
-        ]),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
+                  onPressed:
+                      saving ||
+                          loading ||
+                          (surveyStep == 7 && !canApplyBudgetDemo)
+                      ? null
+                      : () {
+                          if (surveyStep == 0) {
+                            startPlanning();
+                            return;
+                          }
+                          if (surveyStep < 5) {
+                            if (surveyStep == 4 && !planBudgetInitialized) {
+                              planBudget = budget;
+                              planBudgetInitialized = true;
+                            }
+                            update(() => surveyStep++);
+                            return;
+                          }
+                          if (surveyStep == 5 &&
+                              planBudget != null &&
+                              planBudget! < 62.40) {
+                            update(() {
+                              budgetDemoSelections.addAll([0, 1, 2, 3]);
+                              surveyStep = 6;
+                            });
+                            return;
+                          }
+                          if (surveyStep == 6) {
+                            update(() => surveyStep = 7);
+                            return;
+                          }
+                          if (surveyStep == 7) {
+                            applyBudgetDemo();
+                            return;
+                          }
+                          surveyCompleted = true;
+                          savePreferences();
+                          createProposal();
+                        },
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: Text(label, textAlign: TextAlign.center),
+                ),
+              ),
+              gap(8),
+              Text(
+                hint,
+                textAlign: TextAlign.center,
+                style: muted.copyWith(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
       ),
-    ));
+    );
   }
 
   List<Widget> planBudgetView() => [
-    Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-      onPressed: () => update(() => surveyStep = 4),
-      icon: const Icon(Icons.arrow_back, size: 18),
-      label: const Text('Zurück zur Kochzeit'),
-    )),
-    gap(18),
-    title('Was darf dein Plan kosten?'),
+    title('Essenspräferenzen'),
     gap(12),
-    Text('Vor dem Vorschlag · $planningDays Abendessen für $servings ${servings == 1 ? 'Person' : 'Personen'}', style: muted.copyWith(fontSize: 15)),
-    gap(18),
-    panel(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('DEIN PLANBUDGET', style: muted.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-      gap(12),
-      Text(planBudget == null ? 'Kein Limit' : euro(planBudget!), textAlign: TextAlign.center, style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w600)),
-      gap(12),
-      Row(children: [
-        IconButton.filledTonal(tooltip: 'Planbudget verringern', onPressed: planBudget != null && planBudget! > 5 ? () => update(() => planBudget = (planBudget! - 5).clamp(5, 10000).toDouble()) : null, icon: const Icon(Icons.remove)),
-        const SizedBox(width: 10),
-        Expanded(child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: AppColors.softGreen, borderRadius: BorderRadius.circular(16)), child: const Text('für diese Woche', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600)))),
-        const SizedBox(width: 10),
-        IconButton.filledTonal(tooltip: 'Planbudget erhöhen', onPressed: () => update(() => planBudget = ((planBudget ?? budget) + 5).clamp(5, 10000).toDouble()), icon: const Icon(Icons.add)),
-      ]),
-      gap(14),
-      Row(children: [
-        for (final amount in <double?>[55, 75, null]) ...[
-          if (amount != 55) const SizedBox(width: 6),
-          Expanded(child: recipeAction(amount == null ? 'Kein Limit' : '${amount.toInt()} €', planBudget == amount, () => update(() => planBudget = amount))),
-        ],
-      ]),
-    ])),
-    gap(18),
-    surveyCard('Dein Budget gilt für die geplanten Abendessen.', 'Eigene Zusatzartikel, Frühstück, Mittagessen und Snacks gehören nicht zu diesem Planbudget. Dein allgemeines Wochenbudget bleibt unverändert.', color: AppColors.softGreen),
-    gap(18),
-    surveyCard('Budgetablauf ausprobieren · Demo', 'Wähle 55 €, um den Budgetkonflikt und günstigere Alternativen aus Figma durchzuspielen. Das Beispiel zeigt 7 Abendessen für 2 Personen mit 62,40 € Ausgangskosten. Es ist unabhängig von deinem Katalog; echte Produktpreise fehlen noch.', color: AppColors.cream),
-    gap(18),
-    surveyCard('Deine Vorgaben bleiben deine Vorgaben.', 'Allergien und feste Ausschlüsse gelten unabhängig vom Budget. Der Wochenplan wird erst nach deiner Bestätigung übernommen.', color: AppColors.softGreen),
-    gap(14),
-    TextButton(
-      onPressed: saving || loading ? null : () {
-        surveyCompleted = true;
-        savePreferences();
-        createProposal();
-      },
-      child: const Text('Katalogvorschlag ohne Kostenprüfung erstellen'),
-    ),
+    primary('Essenspräferenzen bearbeiten', () => editFoodPreferences()),
   ];
 
   List<Widget> allergyQuestion() => [
@@ -475,7 +468,9 @@ extension _PlanningSurvey on _PlanningPageState {
           Wrap(
             spacing: 8,
             children: [
-              for (final count in ([...{3, 5, 7, planningDays}]..sort()))
+              for (final count in ([
+                ...{3, 5, 7, planningDays},
+              ]..sort()))
                 ChoiceChip(
                   label: Text('$count Tage'),
                   selected: planningDays == count,
@@ -553,38 +548,263 @@ extension _PlanningSurvey on _PlanningPageState {
   ];
 
   bool recipeMatchesPlanning(Recipe recipe, {bool includePersonal = true}) {
-    final activeExclusions = {...exclusions, if (includePersonal) ...personalExclusions};
-    if (hiddenRecipes.contains(recipe.id)) return false;
+    if (!isDinnerRecipe(recipe)) return false;
+    final activeExclusions = {
+      ...exclusions,
+      if (includePersonal) ...personalExclusions,
+    };
+    if (hiddenRecipes.contains(recipe.id) || recipeRatings[recipe.id] == 1) {
+      return false;
+    }
     if (maxMinutes > 0 && recipe.minutes > maxMinutes) return false;
     if (recipe.ingredients.isEmpty) return false;
-    return matchesVerifiedRestrictions(recipe, diet, activeExclusions);
+    return matchesVerifiedRestrictions(recipe, diet, activeExclusions) &&
+        planningDiners
+            .where((d) => d.participates)
+            .every((d) => d.allows(recipe));
   }
 
-  List<Recipe> get eligibleRecipes => recipes.where((r) => recipeMatchesPlanning(r)).toList();
+  List<Recipe> get eligibleRecipes =>
+      recipes.where((r) => recipeMatchesPlanning(r)).toList();
 
-  void createProposal() {
-    final eligible = eligibleRecipes;
-    int preferenceRank(Recipe recipe) => favoriteRecipes.contains(recipe.id) ? 0 : rememberedRecipes.contains(recipe.id) ? 1 : 2;
-    final catalogOrder = {for (var i = 0; i < recipes.length; i++) recipes[i].id: i};
-    eligible.sort((a, b) {
-      final aversion = dislikeScore(a).compareTo(dislikeScore(b));
-      if (aversion != 0) return aversion;
-      final rank = preferenceRank(a).compareTo(preferenceRank(b));
-      return rank != 0 ? rank : catalogOrder[a.id]!.compareTo(catalogOrder[b.id]!);
-    });
+  Map<String, String> get planningIngredientOptions => {
+    for (final r in recipes)
+      for (final i in r.ingredients) i.ingredientId: i.name,
+  };
+
+  PlanningResources get planningResources {
+    final stock = <PlanningStock>[];
+    if (usePlanningStock) {
+      final options = planningIngredientOptions;
+      for (final item in pantry) {
+        final amount = pantryAmount(item);
+        if (amount == null) continue;
+        var id = item['ingredientId'] as String?;
+        if (id == null) {
+          final matches = options.entries
+              .where(
+                (i) =>
+                    i.value.trim().toLowerCase() ==
+                    (item['name'] as String? ?? '').trim().toLowerCase(),
+              )
+              .toList();
+          if (matches.length == 1) id = matches.single.key;
+        }
+        if (id == null) continue;
+        final rawExpiry = item['expires'] as String?;
+        final expires = rawExpiry == null ? null : DateTime.tryParse(rawExpiry);
+        if (rawExpiry != null && expires == null) continue;
+        stock.add(
+          PlanningStock(
+            ingredientId: id,
+            quantity: amount.$1,
+            unit: amount.$2,
+            expires: expires,
+          ),
+        );
+      }
+    }
+    return PlanningResources(
+      stock: stock,
+      costPerServing: recipeCostEstimates,
+      budget: planBudget,
+      costClass: budgetCostClass,
+    );
+  }
+
+  PlannerProfile get plannerProfile => PlannerProfile(
+    resources: planningResources,
+    diners: planningDiners,
+    diet: diet,
+    exclusions: {...exclusions, ...personalExclusions},
+    hidden: {...hiddenRecipes, ...deferredRecipes},
+    ratings: recipeRatings,
+    favorites: favoriteRecipes,
+    effortPenalties: {
+      for (final e in effortFeedback.entries)
+        e.key: (e.value * 12.0).clamp(0, 60),
+    },
+    cooked: {for (final h in cookingHistory) h['recipeId'] as String},
+    tasteAdjustments: {
+      for (final r in recipes)
+        r.id:
+            -dislikeScore(r) * 12.0 -
+            ((dislikeFeedback[r.id] ?? 0) * 10).clamp(0, 40) +
+            (selfChosenRecipes.contains(r.id)
+                ? ((recipeRatings[r.id] ?? 0) >= 4 ? 4 : 2)
+                : 0) +
+            const WeeklyPlanner().learnedTaste(
+              r,
+              recipes,
+              PlannerProfile(
+                ratings: {
+                  ...recipeRatings,
+                  for (final e in dislikeFeedback.entries)
+                    if (!recipeRatings.containsKey(e.key)) e.key: 2,
+                },
+              ),
+            ),
+    },
+  );
+
+  List<PlanningOccurrence> get plannerHistory {
+    final result = <PlanningOccurrence>[];
+    for (final key in cookedEntries) {
+      if (key.length > 11 && key[10] == ':') {
+        final date = DateTime.tryParse(key.substring(0, 10));
+        if (date != null) {
+          result.add(PlanningOccurrence(key.substring(11), date));
+        }
+      }
+    }
+    for (final h in cookingHistory) {
+      final date = DateTime.tryParse(h['date'] as String? ?? '');
+      if (date != null) {
+        result.add(PlanningOccurrence(h['recipeId'] as String, date));
+      }
+    }
+    for (final entry in {
+      ...localWeekCache,
+      dateKey(week): WeeklyPlan(meals: plan),
+    }.entries) {
+      final monday = DateTime.parse(entry.key);
+      final statuses = weeklyReviews[entry.key]?['statuses'] as Map? ?? {};
+      for (final meal in entry.value.meals.entries) {
+        if (meal.value.preparedMealId != null) continue;
+        result.add(
+          PlanningOccurrence(
+            meal.value.recipe.id,
+            monday.add(Duration(days: meal.key)),
+            skipped: statuses['${meal.key}'] == 'notCooked',
+          ),
+        );
+      }
+    }
+    return result;
+  }
+
+  Future<void> refreshPlanningHousehold() async {
+    final scope = activeHouseholdId;
+    if (scope == null || householdRepository == null) return;
+    final seed = plannerSeed;
+    final deferred = {...deferredRecipes};
+    final households = await householdRepository!.list();
+    if (!mounted || activeHouseholdId != scope) {
+      throw StateError('Planungsbereich geändert');
+    }
+    connectedHouseholds = households;
+    if (activeHousehold == null || activeHousehold!.members.isEmpty) {
+      throw StateError('Mitgliederliste nicht verfügbar');
+    }
+    final state = await householdRepository!.loadState(scope);
+    if (!mounted || activeHouseholdId != scope) {
+      throw StateError('Planungsbereich geändert');
+    }
+    sharedRevision = state.revision;
+    lastSharedData = {...sharedAccountData(defaultAccountData), ...state.data};
+    applyPreferences({...personalCloudData, ...lastSharedData});
+    plannerSeed = seed;
+    deferredRecipes
+      ..clear()
+      ..addAll(deferred);
+  }
+
+  Future<void> createProposal({bool allowRepeats = false}) async {
+    if (saving || loading || loadError != null) return;
+    final targetScope = activeHouseholdId;
+    final targetWeek = dateKey(week);
+    final targetRepository = weekRepository;
+    if (accountConnected && !await flushAccountData()) return;
+    if (!mounted ||
+        activeHouseholdId != targetScope ||
+        dateKey(week) != targetWeek) {
+      return;
+    }
+    // Load both sides of the target period; an unseen future booking also blocks.
+    if (targetRepository != null) {
+      update(() => loading = true);
+      try {
+        await refreshPlanningHousehold();
+        final weeks = await Future.wait([
+          for (var offset = -5; offset <= 5; offset++)
+            if (offset != 0)
+              () async {
+                final target = week.add(Duration(days: offset * 7));
+                return MapEntry(
+                  dateKey(target),
+                  await targetRepository.load(target, recipes),
+                );
+              }(),
+        ]);
+        if (!mounted ||
+            activeHouseholdId != targetScope ||
+            dateKey(week) != targetWeek) {
+          return;
+        }
+        localWeekCache.addEntries(weeks);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Der Planungsverlauf konnte nicht vollständig geladen werden. Bitte erneut versuchen.',
+              ),
+            ),
+          );
+        }
+        return;
+      } finally {
+        if (mounted) update(() => loading = false);
+      }
+    }
+    if (!mounted) return;
+    final result = const WeeklyPlanner().generate(
+      catalog: recipes,
+      days: {
+        for (var day = startDay; day < startDay + planningDays; day++)
+          day: PlannerDay(
+            week.add(Duration(days: day)),
+            servings: acceptedDays.contains(day)
+                ? (draft?[day]?.servings ?? servings)
+                : servings,
+            maxMinutes:
+                dayTimeLimits[dateKey(week.add(Duration(days: day)))] ??
+                maxMinutes,
+          ),
+      },
+      profile: plannerProfile,
+      history: plannerHistory,
+      seed: plannerSeed,
+      fixed: {
+        for (final day in acceptedDays)
+          if (draft?[day] != null &&
+              day >= startDay &&
+              day < startDay + planningDays)
+            day: draft![day]!.recipe,
+      },
+      allowRepeats: allowRepeats,
+    );
     update(() {
+      allowPlanRepeats = allowRepeats;
+      plannerResult = result;
       surveyStep = 0;
       editingPlan = false;
-      acceptedDays.clear();
+      acceptedDays.removeWhere((day) => !result.recipes.containsKey(day));
       changedProposalDays.clear();
       swappingDay = null;
       selectedReplacement = null;
       proposalConfirmed = false;
       draft = {
-        for (var i = 0; i < planningDays && i < eligible.length; i++)
-          startDay + i: PlannedMeal(eligible[i], servings),
+        for (final e in result.recipes.entries)
+          e.key: PlannedMeal(
+            e.value,
+            acceptedDays.contains(e.key)
+                ? (draft?[e.key]?.servings ?? servings)
+                : servings,
+          ),
       };
     });
+    savePreferences();
   }
 
   void editExistingPlan() {
@@ -592,6 +812,9 @@ extension _PlanningSurvey on _PlanningPageState {
     update(() {
       surveyStep = 0;
       editingPlan = true;
+      allowPlanRepeats = false;
+      deferredRecipes.clear();
+      plannerResult = null;
       changedProposalDays.clear();
       swappingDay = null;
       selectedReplacement = null;
@@ -601,5 +824,4 @@ extension _PlanningSurvey on _PlanningPageState {
         ..addAll(plan.keys);
     });
   }
-
 }

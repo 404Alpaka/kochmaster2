@@ -11,7 +11,7 @@ extension _RecipeCollectionViews on _PlanningPageState {
       for (final m in plan.values) if (m.preparedMealId == null) m.recipe.id: m.recipe,
       for (final r in recipes) r.id: r,
     };
-    return pool.values.where((r) => personalRecipeRecord(r.id) != null || rememberedRecipes.contains(r.id) || favoriteRecipes.contains(r.id) || recipeWasCooked(r.id)).toList();
+    return pool.values.where((r) => isDinnerRecipe(r) && (personalRecipeRecord(r.id) != null || rememberedRecipes.contains(r.id) || favoriteRecipes.contains(r.id) || recipeWasCooked(r.id))).toList();
   }
   bool collectionMatches(Recipe r, String filter) => switch (filter) {
     'Gemerkt' => rememberedRecipes.contains(r.id), 'Favoriten' => favoriteRecipes.contains(r.id), 'Gekocht' => recipeWasCooked(r.id),

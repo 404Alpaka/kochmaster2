@@ -6,12 +6,14 @@ extension _AccountSync on _PlanningPageState {
 
   String accountFailure(Object error) {
     if (error is PostgrestException) {
+      if(error.message.contains('Private data cannot be shared')) return 'Für die gemeinsamen Planerregeln fehlt die Datenbankmigration 202611190006_planner_household_resources.sql. Bitte anwenden und den Cloudstand erneut laden.';
       var code = error.code;
       if (code == '404' || code == '400') {
         try {
           final value = jsonDecode(error.message);
-          if (value is Map && value['code'] is String)
+          if (value is Map && value['code'] is String) {
             code = value['code'] as String;
+          }
         } catch (_) {
           /* Preserve the original code for non-JSON errors. */
         }
@@ -151,7 +153,7 @@ extension _AccountSync on _PlanningPageState {
   }
 
   Future<void> chooseAccountScope(String? id) async {
-    if (accountLoading || saving || householdBusy) return;
+    if (accountLoading || saving || loading || householdBusy) return;
     update(() {
       accountLoading = true;
       householdError = null;

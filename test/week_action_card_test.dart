@@ -13,7 +13,10 @@ import 'planning_page_test.dart' show MemoryWeekStore;
 class MissingRevisionStore extends MemoryWeekStore {
   @override
   Future<WeeklyPlan> load(DateTime week, List<Recipe> recipes) async {
-    throw const PostgrestException(message: 'column user_week_plans.revision does not exist', code: '42703');
+    throw const PostgrestException(
+      message: 'column user_week_plans.revision does not exist',
+      code: '42703',
+    );
   }
 }
 
@@ -37,34 +40,63 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Kommende Wochen getrennt bearbeiten und wieder öffnen', (tester) async {
+  testWidgets('Kommende Wochen getrennt bearbeiten und wieder öffnen', (
+    tester,
+  ) async {
     final store = MemoryWeekStore();
     final next = DateTime(week.year, week.month, week.day + 7);
-    await store.save(week, WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 2)}));
-    await store.save(next, WeeklyPlan(meals: {0: PlannedMeal(recipes.last, 4)}));
+    await store.save(
+      week,
+      WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 2)}),
+    );
+    await store.save(
+      next,
+      WeeklyPlan(meals: {0: PlannedMeal(recipes.last, 4)}),
+    );
     await open(tester, store);
     expect(find.text('Diese Woche'), findsOneWidget);
     await tester.tap(find.byTooltip('Nächste Woche'));
     await tester.pumpAndSettle();
     expect(find.text('Nächste Woche'), findsOneWidget);
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('increase-0')), 150,
-      scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('increase-0')),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const ValueKey('increase-0')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('increase-0')));
     await tester.pumpAndSettle();
-    expect(WeeklyPlan.fromJson(store.rows[dateKey(next)]!, recipes).meals[0]!.servings, 5);
-    expect(WeeklyPlan.fromJson(store.rows[dateKey(week)]!, recipes).meals[today]!.servings, 2);
-    await tester.scrollUntilVisible(find.text('Zur aktuellen Woche'), -200,
-      scrollable: find.byType(Scrollable).first);
+    expect(
+      WeeklyPlan.fromJson(
+        store.rows[dateKey(next)]!,
+        recipes,
+      ).meals[0]!.servings,
+      5,
+    );
+    expect(
+      WeeklyPlan.fromJson(
+        store.rows[dateKey(week)]!,
+        recipes,
+      ).meals[today]!.servings,
+      2,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Zur aktuellen Woche'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Zur aktuellen Woche'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Zur aktuellen Woche'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.byTooltip('Vorherige Woche'), -200,
-      scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      find.byTooltip('Vorherige Woche'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Diese Woche'), findsOneWidget);
     await tester.tap(find.byTooltip('Nächste Woche'));
@@ -79,10 +111,15 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Datumsauswahl öffnet Zielwoche und schützt den Entwurf', (tester) async {
+  testWidgets('Datumsauswahl öffnet Zielwoche und schützt den Entwurf', (
+    tester,
+  ) async {
     final store = MemoryWeekStore();
     final target = DateTime(2027, 1, 11);
-    await store.save(target, WeeklyPlan(meals: {0: PlannedMeal(recipes.last, 3)}));
+    await store.save(
+      target,
+      WeeklyPlan(meals: {0: PlannedMeal(recipes.last, 3)}),
+    );
     await open(tester, store);
     await tester.tap(find.text('Woche auswählen'));
     await tester.pumpAndSettle();
@@ -92,8 +129,11 @@ void main() {
     await tester.tap(find.text('Woche öffnen'));
     await tester.pumpAndSettle();
     expect(find.textContaining('11.1.2027 – 17.1.2027'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Wochenplan bearbeiten'), 150,
-      scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      find.text('Wochenplan bearbeiten'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Wochenplan bearbeiten'));
     await tester.pumpAndSettle();
@@ -116,19 +156,25 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Startseite startet das heutige Gericht mit geplanten Portionen', (tester) async {
-    final store = MemoryWeekStore();
-    await store.save(week, WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 4)}));
-    await open(tester, store);
-    await tester.tap(find.text('Start'));
-    await tester.pumpAndSettle();
-    expect(find.text('Kochen starten'), findsOneWidget);
-    await tester.tap(find.text('Kochen starten'));
-    await tester.pumpAndSettle();
-    expect(find.text('Zeit zu kochen.'), findsOneWidget);
-    expect(find.text('4 Portionen'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'Startseite startet das heutige Gericht mit geplanten Portionen',
+    (tester) async {
+      final store = MemoryWeekStore();
+      await store.save(
+        week,
+        WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 4)}),
+      );
+      await open(tester, store);
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      expect(find.text('Kochen starten'), findsOneWidget);
+      await tester.tap(find.text('Kochen starten'));
+      await tester.pumpAndSettle();
+      expect(find.text('Zeit zu kochen.'), findsOneWidget);
+      expect(find.text('4 Portionen'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('Leerer Plan startet die Planung direkt im grünen Feld', (
     tester,
@@ -137,20 +183,30 @@ void main() {
     expect(find.text('Wochenplan erstellen'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('week-primary-action')));
     await tester.pumpAndSettle();
-    expect(find.text('1 von 4'), findsOneWidget);
+    expect(find.text('Essenspräferenzen'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Ladefehler blockiert nicht das Vorbereiten eines Vorschlags', (tester) async {
+  testWidgets('Ladefehler blockiert nicht das Vorbereiten eines Vorschlags', (
+    tester,
+  ) async {
     final store = MissingRevisionStore();
     await open(tester, store);
-    expect(find.textContaining('Du kannst einen Vorschlag vorbereiten'), findsOneWidget);
+    expect(
+      find.textContaining('Du kannst einen Vorschlag vorbereiten'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Wochenplan erstellen'));
     await tester.pumpAndSettle();
-    expect(find.text('1 von 4'), findsOneWidget);
-    await tester.tap(find.text('Weiter: Ernährungsweise'));
+    expect(find.text('Essenspräferenzen'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Vegetarisch'));
     await tester.pumpAndSettle();
-    expect(find.text('2 von 4'), findsOneWidget);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Vegetarisch'))
+          .selected,
+      isTrue,
+    );
     expect(store.saveCalls, 0);
     await tester.pumpWidget(const SizedBox());
   });
@@ -215,10 +271,15 @@ void main() {
     await tester.tap(find.byTooltip('Nächste Woche'));
     await tester.pumpAndSettle();
     expect(find.text('Heute auf dem Teller'), findsNothing);
-    await tester.scrollUntilVisible(find.text(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][today]), 150,
-      scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(
+      find.text(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][today]),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][today]));
+    await tester.tap(
+      find.text(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][today]),
+    );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('week-primary-action')),

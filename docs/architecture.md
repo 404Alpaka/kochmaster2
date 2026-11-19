@@ -36,6 +36,10 @@ Der App-Rahmen liegt in `app/kochmaster_app.dart`. Die Planungsoberfläche ist a
 
 ## Geplanter Ausbau
 
+- Frühstücks- und Mittagsplanung als eigene Mahlzeitenbereiche ergänzen. Aktuell
+  sind Entdecken, Empfehlungen und automatische Planung auf Abendessen ausgerichtet;
+  Frühstücksrezepte wie Porridge werden dort ausgeblendet.
+
 - Pagination für den öffentlichen Katalog ergänzen; aktuell höchstens 100 Rezepte.
 - Versionsvergleich für Katalogrezepte ergänzen.
 - Android-/iOS-Gerätetests und native Rückleitungen für Auth-Links ergänzen.
@@ -72,3 +76,16 @@ Produktpreise, Bestellungen und eine echte Nährwertoptimierung fehlen noch.
 Einrichtung und Grenzen: [Datenbank](database.md), [Konten](accounts.md),
 [Haushalte](households.md), [Rezeptverwaltung](admin.md),
 [Planungsumfrage](planning-survey.md).
+## Essenspräferenzen auf der Startseite
+
+Bis die Präferenzen übernommen wurden, öffnet die grüne Karte „So isst du“ zwischen den Startkacheln und dem Tagesrezept
+eine eigene Einstellungsseite für Ernährungsweise, Allergenausschlüsse, Portionen,
+Planungstage, maximale Kochzeit und Wochenbudget. Änderungen werden erst beim
+Übernehmen auf die vorhandenen Planungsparameter angewendet. Gespeicherte Pläne
+werden nicht automatisch geändert. Die Speicherung nutzt den bestehenden
+Kontodatenspeicher bzw. im Web ohne Konto den lokalen Präferenzspeicher.
+Budgetangaben sind ein Planungsziel; Live-Produktpreise werden noch nicht geprüft.
+Nach dem Übernehmen verschwindet die Startkarte. Über das Profilsymbol bleibt
+„Essenspräferenzen“ erreichbar. Auch die erste Planerstellung öffnet dieselbe
+Einstellungsseite. Anschließend erzeugt der Planer direkt einen Vorschlag;
+eine zusätzliche Budgetbestätigung und die bisherigen Budget-Hinweiskarten entfallen.

@@ -78,6 +78,9 @@ extension _PantryViews on _PlanningPageState {
 
   Future<void> editPantryProduct({Map<String, dynamic>? item, bool receipt = false}) async {
     var name = item?['name'] as String? ?? '';
+    var ingredientId = item?['ingredientId'] as String?;
+    final ingredientOptions = {...planningIngredientOptions};
+    if(ingredientId != null && !ingredientOptions.containsKey(ingredientId)) ingredientOptions[ingredientId]=name;
     var amount = item?['amount'] as String? ?? '';
     var location = item?['location'] as String? ?? 'Kühlschrank';
     var expires = item?['expires'] as String?;
@@ -85,9 +88,10 @@ extension _PantryViews on _PlanningPageState {
     final result = await showDialog<String>(context: context, builder: (context) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
       title: Text(item == null ? 'Lebensmittel erfassen' : 'Lebensmittel bearbeiten'),
       content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextFormField(initialValue: name, decoration: const InputDecoration(labelText: 'Lebensmittel'), validator: (v) => v == null || v.trim().isEmpty ? 'Bitte ein Lebensmittel eingeben.' : null, onChanged: (v) => name = v), gap(12),
+        TextFormField(initialValue: name, decoration: const InputDecoration(labelText: 'Lebensmittel'), validator: (v) => v == null || v.trim().isEmpty ? 'Bitte ein Lebensmittel eingeben.' : null, onChanged: (v) { name = v; ingredientId=null; }), gap(12),
         TextFormField(initialValue: amount, decoration: const InputDecoration(labelText: 'Menge, z. B. 500 g'), validator: (v) => v == null || v.trim().isEmpty ? 'Bitte eine Menge eingeben.' : null, onChanged: (v) => amount = v), gap(12),
-        DropdownButtonFormField<String>(initialValue: location, decoration: const InputDecoration(labelText: 'Lagerort'), items: const [DropdownMenuItem(value: 'Kühlschrank', child: Text('Kühlschrank')), DropdownMenuItem(value: 'Trocken', child: Text('Trocken'))], onChanged: (v) => location = v ?? location), gap(12),
+        DropdownButtonFormField<String>(initialValue:ingredientId,isExpanded:true,decoration:const InputDecoration(labelText:'Zutat für die Wochenplanung (optional)'),items:[const DropdownMenuItem<String>(value:null,child:Text('Keine ausdrückliche Zuordnung')),for(final entry in ingredientOptions.entries.toList()..sort((a,b)=>a.value.compareTo(b.value))) DropdownMenuItem(value:entry.key,child:Text(entry.value,overflow:TextOverflow.ellipsis))],onChanged:(v)=>ingredientId=v),gap(12),
+        DropdownButtonFormField<String>(isExpanded: true, initialValue: location, decoration: const InputDecoration(labelText: 'Lagerort'), items: const [DropdownMenuItem(value: 'Kühlschrank', child: Text('Kühlschrank')), DropdownMenuItem(value: 'Trocken', child: Text('Trocken'))], onChanged: (v) => location = v ?? location), gap(12),
         TextButton.icon(icon: const Icon(Icons.event_outlined), label: Text(expires == null ? 'Haltbarkeitsdatum ergänzen' : 'Bis ${displayDate(DateTime.parse(expires!))}'), onPressed: () async {
           final date = await showDatePicker(context: context, initialDate: DateTime.tryParse(expires ?? '') ?? pantryToday, firstDate: DateTime(2000), lastDate: DateTime(2100));
           if (date != null && context.mounted) setDialogState(() => expires = dateKey(date));
@@ -104,7 +108,7 @@ extension _PantryViews on _PlanningPageState {
     update(() {
       if (result == 'delete') { (receipt ? receiptDraft : pantry).remove(item); return; }
       final target = item ?? <String, dynamic>{};
-      target.addAll({'name': name.trim(), 'amount': amount.trim(), 'location': location, 'expires': expires});
+      target.addAll({'name': name.trim(), 'amount': amount.trim(), 'location': location, 'expires': expires, 'ingredientId': ingredientId});
       if (item == null) pantry.add(target);
     });
     if (!receipt) savePreferences();
@@ -170,7 +174,7 @@ extension _PantryViews on _PlanningPageState {
           if ((p['name'] as String).toLowerCase() == (item['name'] as String).toLowerCase() && p['location'] == item['location'] && p['expires'] == item['expires'] && amount != null && old != null && old.$2.toLowerCase() == amount.$2.toLowerCase()) { existing = p; break; }
         }
         if (existing == null) { pantry.add(item); }
-        else { existing['amount'] = amountLabel(pantryAmount(existing)!.$1 + amount!.$1, amount!.$2); }
+        else { existing['amount'] = amountLabel(pantryAmount(existing)!.$1 + amount!.$1, amount.$2); }
       }
       receiptDraft = []; pantryPage = 0; pantryFilter = 'Alle';
     });

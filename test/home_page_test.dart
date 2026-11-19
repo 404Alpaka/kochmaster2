@@ -80,11 +80,13 @@ void main() {
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-        find.byTooltip('Rezept ansehen').first,
+        find.text('Dein Rezept des Tages'),
         150,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byTooltip('Rezept ansehen').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Rezept ansehen').first);
       await tester.pumpAndSettle();
       expect(find.widgetWithText(FilledButton, 'Jetzt kochen'), findsOneWidget);

@@ -50,62 +50,126 @@ extension _MiseViews on _PlanningPageState {
     openedRecipe = null;
   });
 
-  bool get hasBottomAction => cookingPage > 0 ||
-      (!readOnlyShared && cookingPage == 0 && (
-        showPlanningAction || showProposalAction ||
-        (tab == 3 && shoppingPage != 1) ||
-        (tab == 2 && pantryPage != 0))) ||
-      (cookingPage == 0 && tab == 0 && collectionPage > 0 && openedRecipe == null) ||
-      (cookingPage == 0 && tab == 4 && householdPage > 0 && (householdDemoJoined || householdPage >= 5));
+  bool get hasBottomAction =>
+      cookingPage > 0 ||
+      (!readOnlyShared &&
+          cookingPage == 0 &&
+          (showPlanningAction ||
+              showProposalAction ||
+              (tab == 3 && shoppingPage != 1) ||
+              (tab == 2 && pantryPage != 0))) ||
+      (cookingPage == 0 &&
+          tab == 0 &&
+          collectionPage > 0 &&
+          openedRecipe == null) ||
+      (cookingPage == 0 &&
+          tab == 4 &&
+          householdPage > 0 &&
+          (householdDemoJoined || householdPage >= 5));
 
   Widget miseScaffold() => Scaffold(
+    floatingActionButton:
+        admin &&
+            tab == 0 &&
+            openedRecipe == null &&
+            collectionPage == 0 &&
+            cookingPage == 0
+        ? FloatingActionButton(
+            tooltip: 'Rezept erstellen',
+            backgroundColor: AppColors.sage,
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            onPressed: adminActionBusy
+                ? null
+                : () => adminRecipeAction('create'),
+            child: const Icon(Icons.add),
+          )
+        : null,
     extendBody: !hasBottomAction,
     body: SafeArea(
       bottom: false,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
-          child: Stack(children: [Builder(builder: (contentContext) => ListView(
-            key: ValueKey(
-              'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
-            ),
-            padding: EdgeInsets.fromLTRB(22, recipeDiscoveryActive ? recipeHeaderHeight + 4 : 18, 22, 28 + MediaQuery.paddingOf(contentContext).bottom),
+          child: Stack(
             children: [
-              if (cookingPage > 0) ...cookingFlow(),
-              if (cookingPage == 0) ...[
-              if (tab == 5) ...homeView(),
-              if (tab == 0)
-                ...openedRecipe == null
-                    ? collectionPage == 0 ? recipeView() : recipeCollectionFlow()
-                    : recipeDetail(openedRecipe!),
-              if(readOnlyShared && tab>=1 && tab<=3) ...sharedReadOnlyFlow(),
-              if (!readOnlyShared && tab == 1) ...[
-                weekPicker(),
-                gap(16),
-                if (nextWeekHints.containsKey(dateKey(week))) ...[surveyCard('Deine Wünsche für diese Woche', nextWeekHints[dateKey(week)]!['note'] as String? ?? '', color: AppColors.softGreen), gap(14), if (nextWeekHints[dateKey(week)]!['checkPrepared'] == true) ...[recipeAction('Vorhandene Mahlzeiten prüfen →', false, openPreparedMeals), gap(14)]],
-                ...planningFlow(),
-              ],
-              if (!readOnlyShared && tab == 2) ...pantryFlow(),
-              if (!readOnlyShared && tab == 3) ...shoppingFlow(),
-              if (tab == 4) ...householdFlow(),
-              ],
-              gap(24),
-              if (tab != 0 && tab != 5) storageStatus(),
-              if (saving) const LinearProgressIndicator(),
-              if (loadError != null) ...[
-                Text(
-                  loadError!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+              Builder(
+                builder: (contentContext) => ListView(
+                  key: ValueKey(
+                    'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    22,
+                    recipeDiscoveryActive ? recipeHeaderHeight + 4 : 18,
+                    22,
+                    28 + MediaQuery.paddingOf(contentContext).bottom,
+                  ),
+                  children: [
+                    if (cookingPage > 0) ...cookingFlow(),
+                    if (cookingPage == 0) ...[
+                      if (tab == 5) ...homeView(),
+                      if (tab == 0)
+                        ...openedRecipe == null
+                            ? collectionPage == 0
+                                  ? recipeView()
+                                  : recipeCollectionFlow()
+                            : recipeDetail(openedRecipe!),
+                      if (readOnlyShared && tab >= 1 && tab <= 3)
+                        ...sharedReadOnlyFlow(),
+                      if (!readOnlyShared && tab == 1) ...[
+                        weekPicker(),
+                        gap(16),
+                        if (nextWeekHints.containsKey(dateKey(week))) ...[
+                          surveyCard(
+                            'Deine Wünsche für diese Woche',
+                            nextWeekHints[dateKey(week)]!['note'] as String? ??
+                                '',
+                            color: AppColors.softGreen,
+                          ),
+                          gap(14),
+                          if (nextWeekHints[dateKey(week)]!['checkPrepared'] ==
+                              true) ...[
+                            recipeAction(
+                              'Vorhandene Mahlzeiten prüfen →',
+                              false,
+                              openPreparedMeals,
+                            ),
+                            gap(14),
+                          ],
+                        ],
+                        ...planningFlow(),
+                      ],
+                      if (!readOnlyShared && tab == 2) ...pantryFlow(),
+                      if (!readOnlyShared && tab == 3) ...shoppingFlow(),
+                      if (tab == 4) ...householdFlow(),
+                    ],
+                    gap(24),
+                    if (tab != 0 && tab != 5) storageStatus(),
+                    if (saving) const LinearProgressIndicator(),
+                    if (loadError != null) ...[
+                      Text(
+                        loadError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: loadWeek,
+                        child: const Text('Wochenplan erneut laden'),
+                      ),
+                    ],
+                  ],
                 ),
-                TextButton(
-                  onPressed: loadWeek,
-                  child: const Text('Wochenplan erneut laden'),
+              ),
+              if (recipeDiscoveryActive)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: recipePinnedHeader(),
                 ),
-              ],
             ],
-          )),
-          if (recipeDiscoveryActive) Positioned(top: 0, left: 0, right: 0, child: recipePinnedHeader()),
-          ]),
+          ),
         ),
       ),
     ),
@@ -113,19 +177,25 @@ extension _MiseViews on _PlanningPageState {
       key: const ValueKey('app-bottom-dock'),
       color: hasBottomAction ? Theme.of(context).scaffoldBackgroundColor : null,
       child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (cookingPage > 0) cookingActionBar(),
-        if (cookingPage == 0) ...[
-        if (tab == 0 && collectionPage > 0 && openedRecipe == null) recipeCollectionActionBar(),
-        if (!readOnlyShared && showPlanningAction) planningActionBar(),
-        if (!readOnlyShared && showProposalAction) proposalActionBar(),
-        if (!readOnlyShared && tab == 3 && shoppingPage != 1) shoppingActionBar(),
-        if (!readOnlyShared && tab == 2 && pantryPage != 0) pantryActionBar(),
-        if (tab == 4 && householdPage > 0 && (householdDemoJoined || householdPage >= 5)) householdActionBar(),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (cookingPage > 0) cookingActionBar(),
+          if (cookingPage == 0) ...[
+            if (tab == 0 && collectionPage > 0 && openedRecipe == null)
+              recipeCollectionActionBar(),
+            if (!readOnlyShared && showPlanningAction) planningActionBar(),
+            if (!readOnlyShared && showProposalAction) proposalActionBar(),
+            if (!readOnlyShared && tab == 3 && shoppingPage != 1)
+              shoppingActionBar(),
+            if (!readOnlyShared && tab == 2 && pantryPage != 0)
+              pantryActionBar(),
+            if (tab == 4 &&
+                householdPage > 0 &&
+                (householdDemoJoined || householdPage >= 5))
+              householdActionBar(),
+          ],
+          AppBottomNavigation(selectedTab: tab, onSelect: selectTab),
         ],
-        AppBottomNavigation(selectedTab: tab, onSelect: selectTab),
-      ],
       ),
     ),
   );
@@ -139,7 +209,10 @@ extension _MiseViews on _PlanningPageState {
     savePreferences();
   }
 
-  void showRecipeCollection() => update(() { collectionPage = 1; openedRecipe = null; });
+  void showRecipeCollection() => update(() {
+    collectionPage = 1;
+    openedRecipe = null;
+  });
 
   void stopSuggestingRecipe(Recipe recipe) {
     update(() {
@@ -147,13 +220,18 @@ extension _MiseViews on _PlanningPageState {
       if (openedRecipe?.id == recipe.id) openedRecipe = null;
     });
     savePreferences();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Rezept wird nicht mehr vorgeschlagen.'),
-      action: SnackBarAction(label: 'Rückgängig', onPressed: () {
-        update(() => hiddenRecipes.remove(recipe.id));
-        savePreferences();
-      }),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Rezept wird nicht mehr vorgeschlagen.'),
+        action: SnackBarAction(
+          label: 'Rückgängig',
+          onPressed: () {
+            update(() => hiddenRecipes.remove(recipe.id));
+            savePreferences();
+          },
+        ),
+      ),
+    );
   }
 
   void recipeMenu(Recipe recipe) {
@@ -163,53 +241,93 @@ extension _MiseViews on _PlanningPageState {
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('Rezept ansehen'),
-                leading: const Icon(Icons.menu_book_outlined),
-                onTap: () {
-                  Navigator.pop(context);
-                  details(recipe);
-                },
-              ),
-              ListTile(
-                title: Text(rememberedRecipes.contains(recipe.id) ? 'Nicht mehr merken' : 'Merken'),
-                leading: Icon(rememberedRecipes.contains(recipe.id) ? Icons.bookmark : Icons.bookmark_border),
-                onTap: () {
-                  Navigator.pop(context);
-                  toggleRecipePreference(rememberedRecipes, recipe);
-                },
-              ),
-              ListTile(
-                title: Text(favoriteRecipes.contains(recipe.id) ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'),
-                leading: Icon(favoriteRecipes.contains(recipe.id) ? Icons.favorite : Icons.favorite_border),
-                onTap: () {
-                  Navigator.pop(context);
-                  toggleRecipePreference(favoriteRecipes, recipe);
-                },
-              ),
-              ListTile(
-                title: const Text('Zum Wochenplan hinzufügen'),
-                leading: const Icon(Icons.calendar_month_outlined),
-                onTap: saving || loading || loadError != null
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                        addRecipe(recipe);
-                      },
-              ),
-              ListTile(
-                title: const Text('Nicht mehr vorschlagen'),
-                leading: const Icon(Icons.visibility_off_outlined),
-                onTap: () {
-                  Navigator.pop(context);
-                  stopSuggestingRecipe(recipe);
-                },
-              ),
-            ],
-          )),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('Rezept ansehen'),
+                  leading: const Icon(Icons.menu_book_outlined),
+                  onTap: () {
+                    Navigator.pop(context);
+                    details(recipe);
+                  },
+                ),
+                ListTile(
+                  title: Text(
+                    rememberedRecipes.contains(recipe.id)
+                        ? 'Nicht mehr merken'
+                        : 'Merken',
+                  ),
+                  leading: Icon(
+                    rememberedRecipes.contains(recipe.id)
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    toggleRecipePreference(rememberedRecipes, recipe);
+                  },
+                ),
+                ListTile(
+                  title: Text(
+                    favoriteRecipes.contains(recipe.id)
+                        ? 'Aus Favoriten entfernen'
+                        : 'Als Favorit speichern',
+                  ),
+                  leading: Icon(
+                    favoriteRecipes.contains(recipe.id)
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    toggleRecipePreference(favoriteRecipes, recipe);
+                  },
+                ),
+                ListTile(
+                  title: const Text('Zum Wochenplan hinzufügen'),
+                  leading: const Icon(Icons.calendar_month_outlined),
+                  onTap: saving || loading || loadError != null
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          addRecipe(recipe);
+                        },
+                ),
+                ListTile(
+                  title: const Text('Nicht mehr vorschlagen'),
+                  leading: const Icon(Icons.visibility_off_outlined),
+                  onTap: () {
+                    Navigator.pop(context);
+                    stopSuggestingRecipe(recipe);
+                  },
+                ),
+                if (canManageRecipe(recipe)) ...[
+                  const Divider(),
+                  for (final action in [
+                    ('edit', 'Rezept bearbeiten', Icons.edit_outlined),
+                    (
+                      'draft',
+                      'In Entwürfe verschieben',
+                      Icons.visibility_off_outlined,
+                    ),
+                    ('delete', 'Rezept löschen', Icons.delete_outline),
+                  ])
+                    ListTile(
+                      title: Text(action.$2),
+                      leading: Icon(action.$3),
+                      onTap: adminActionBusy
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              adminRecipeAction(action.$1, recipe);
+                            },
+                    ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -253,17 +371,38 @@ extension _MiseViews on _PlanningPageState {
                         ),
                         gap(5),
                       ],
-                      Text(
-                        recipe.name,
-                        style: TextStyle(
-                          fontSize: featured ? 18 : 14,
-                          fontWeight: FontWeight.w600,
+                      SizedBox(
+                        height: featured
+                            ? null
+                            : 14 *
+                                  1.3 *
+                                  MediaQuery.textScalerOf(context).scale(1) *
+                                  2,
+                        child: Text(
+                          recipe.name,
+                          maxLines: featured ? null : 2,
+                          overflow: featured ? null : TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: featured ? 18 : 14,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       gap(4),
-                      Text(
-                        '${recipe.minutes} Min. · ${recipe.servings} Portionen',
-                        style: muted.copyWith(fontSize: 13),
+                      SizedBox(
+                        height: featured
+                            ? null
+                            : 13 *
+                                  1.5 *
+                                  MediaQuery.textScalerOf(context).scale(1) *
+                                  2,
+                        child: Text(
+                          '${recipe.minutes} Min. · ${recipe.servings} Portionen',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: muted.copyWith(fontSize: 13),
+                        ),
                       ),
                     ],
                   ),
@@ -273,8 +412,11 @@ extension _MiseViews on _PlanningPageState {
           ),
         ),
         if (!featured)
-          TextButton.icon(onPressed: () => recipeMenu(recipe),
-            icon: const Icon(Icons.more_horiz), label: const Text('Aktionen')),
+          TextButton.icon(
+            onPressed: () => recipeMenu(recipe),
+            icon: const Icon(Icons.more_horiz),
+            label: const Text('Aktionen'),
+          ),
         if (featured)
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
@@ -321,10 +463,19 @@ extension _MiseViews on _PlanningPageState {
         child: Text(label, style: const TextStyle(fontSize: 14)),
       );
 
-  Widget recipePhoto(Recipe recipe, {required double height}) => RecipeImage(recipeImageSource(recipe), height: height, semanticLabel: 'Rezeptbild für ${recipe.name}');
+  Widget recipePhoto(Recipe recipe, {required double height}) => RecipeImage(
+    recipeImageSource(recipe),
+    height: height,
+    semanticLabel: 'Rezeptbild für ${recipe.name}',
+  );
 
   List<Widget> recipeDetail(Recipe recipe) {
-    Widget action(String label, IconData icon, VoidCallback? onPressed, {bool selected = false}) => Expanded(
+    Widget action(
+      String label,
+      IconData icon,
+      VoidCallback? onPressed, {
+      bool selected = false,
+    }) => Expanded(
       child: Semantics(
         selected: selected,
         child: TextButton(
@@ -333,14 +484,25 @@ extension _MiseViews on _PlanningPageState {
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
             minimumSize: const Size(0, 64),
             foregroundColor: selected ? AppColors.sage : AppColors.lightText,
-            backgroundColor: selected ? AppColors.softGreen : Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: selected
+                ? AppColors.softGreen
+                : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 22),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontSize: 11), textAlign: TextAlign.center),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -364,7 +526,10 @@ extension _MiseViews on _PlanningPageState {
       gap(8),
       ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: recipePhoto(recipe, height: recipeImageSource(recipe) == null ? 104 : 240),
+        child: recipePhoto(
+          recipe,
+          height: recipeImageSource(recipe) == null ? 104 : 240,
+        ),
       ),
       gap(6),
       if (recipeImageSource(recipe) != null)
@@ -382,7 +547,10 @@ extension _MiseViews on _PlanningPageState {
       gap(8),
       title(recipe.name),
       gap(8),
-      Text('${recipe.minutes} Min. · ${recipe.ingredients.length} Zutaten', style: muted),
+      Text(
+        '${recipe.minutes} Min. · ${recipe.ingredients.length} Zutaten',
+        style: muted,
+      ),
       gap(12),
       SizedBox(
         width: double.infinity,
@@ -393,22 +561,127 @@ extension _MiseViews on _PlanningPageState {
         ),
       ),
       gap(8),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        action(rememberedRecipes.contains(recipe.id) ? 'Gemerkt' : 'Merken',
-          rememberedRecipes.contains(recipe.id) ? Icons.bookmark : Icons.bookmark_border,
-          () => toggleRecipePreference(rememberedRecipes, recipe), selected: rememberedRecipes.contains(recipe.id)),
-        action('Favorit', favoriteRecipes.contains(recipe.id) ? Icons.favorite : Icons.favorite_border,
-          () => toggleRecipePreference(favoriteRecipes, recipe), selected: favoriteRecipes.contains(recipe.id)),
-        action('Einplanen', Icons.calendar_month_outlined,
-          saving || loading || loadError != null ? null : () => addRecipe(recipe, portions: detailServings)),
-        action('Ausblenden', Icons.visibility_off_outlined, () => stopSuggestingRecipe(recipe)),
-      ]),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          action(
+            rememberedRecipes.contains(recipe.id) ? 'Gemerkt' : 'Merken',
+            rememberedRecipes.contains(recipe.id)
+                ? Icons.bookmark
+                : Icons.bookmark_border,
+            () => toggleRecipePreference(rememberedRecipes, recipe),
+            selected: rememberedRecipes.contains(recipe.id),
+          ),
+          action(
+            'Favorit',
+            favoriteRecipes.contains(recipe.id)
+                ? Icons.favorite
+                : Icons.favorite_border,
+            () => toggleRecipePreference(favoriteRecipes, recipe),
+            selected: favoriteRecipes.contains(recipe.id),
+          ),
+          action(
+            'Einplanen',
+            Icons.calendar_month_outlined,
+            saving || loading || loadError != null
+                ? null
+                : () => addRecipe(recipe, portions: detailServings),
+          ),
+          action(
+            'Ausblenden',
+            Icons.visibility_off_outlined,
+            () => stopSuggestingRecipe(recipe),
+          ),
+        ],
+      ),
+      gap(12),
+      Text('Deine Bewertung', style: muted),
+      Wrap(
+        children: [
+          for (var stars = 1; stars <= 5; stars++)
+            IconButton(
+              tooltip: '$stars Sterne',
+              onPressed: () {
+                update(() => recipeRatings[recipe.id] = stars);
+                savePreferences();
+              },
+              icon: Icon(
+                (recipeRatings[recipe.id] ?? 0) >= stars
+                    ? Icons.star
+                    : Icons.star_border,
+              ),
+            ),
+          if (recipeRatings.containsKey(recipe.id))
+            TextButton(
+              onPressed: () {
+                update(() => recipeRatings.remove(recipe.id));
+                savePreferences();
+              },
+              child: const Text('Zurücksetzen'),
+            ),
+        ],
+      ),
+      TextFormField(
+        key: ValueKey('recipe-note-${recipe.id}'),
+        initialValue: recipeNotes[recipe.id] ?? '',
+        decoration: const InputDecoration(labelText: 'Private Notiz'),
+        maxLines: 2,
+        onChanged: (value) {
+          recipeNotes[recipe.id] = value;
+          savePreferences();
+        },
+      ),
+      TextButton.icon(
+        onPressed: readOnlyShared ? null : () => editRecipeCost(recipe),
+        icon: const Icon(Icons.euro_outlined),
+        label: Text(
+          recipeCostEstimates.containsKey(recipe.id)
+              ? 'Eigene Kostenschätzung: ${euro(recipeCostEstimates[recipe.id]!)} pro Portion'
+              : 'Kosten pro Portion schätzen',
+        ),
+      ),
+      if (canManageRecipe(recipe))
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => recipeMenu(recipe),
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            label: const Text('Admin-Aktionen'),
+          ),
+        ),
       if (personalRecipeRecord(recipe.id) != null) ...[
         gap(12),
-        if ((personalRecipeRecord(recipe.id)!['source'] as String? ?? '').isNotEmpty) SelectableText('Quelle: ${personalRecipeRecord(recipe.id)!['source']}', style: muted),
-        if ((personalRecipeRecord(recipe.id)!['notes'] as String? ?? '').isNotEmpty) ExpansionTile(tilePadding: EdgeInsets.zero, title: const Text('Private Notizen'), children: [Align(alignment: Alignment.centerLeft, child: SelectableText(personalRecipeRecord(recipe.id)!['notes'] as String, style: muted))]),
+        if ((personalRecipeRecord(recipe.id)!['source'] as String? ?? '')
+            .isNotEmpty)
+          SelectableText(
+            'Quelle: ${personalRecipeRecord(recipe.id)!['source']}',
+            style: muted,
+          ),
+        if ((personalRecipeRecord(recipe.id)!['notes'] as String? ?? '')
+            .isNotEmpty)
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Private Notizen'),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SelectableText(
+                  personalRecipeRecord(recipe.id)!['notes'] as String,
+                  style: muted,
+                ),
+              ),
+            ],
+          ),
       ],
-      if (personalRecipes.any((r) => (r['recipe'] as Map)['id'] == recipe.id)) TextButton(onPressed: () => editPersonalRecipe(personalRecipes.firstWhere((r) => (r['recipe'] as Map)['id'] == recipe.id)), child: const Text('Eigenes Rezept bearbeiten')),
+      if (personalRecipes.any((r) => (r['recipe'] as Map)['id'] == recipe.id))
+        TextButton(
+          onPressed: () => editPersonalRecipe(
+            personalRecipes.firstWhere(
+              (r) => (r['recipe'] as Map)['id'] == recipe.id,
+            ),
+          ),
+          child: const Text('Eigenes Rezept bearbeiten'),
+        ),
       gap(20),
       Row(
         children: [
@@ -492,7 +765,16 @@ extension _MiseViews on _PlanningPageState {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(renderRecipeStep(recipe, recipe.steps[i], portions: detailServings), style: muted)),
+                    Expanded(
+                      child: Text(
+                        renderRecipeStep(
+                          recipe,
+                          recipe.steps[i],
+                          portions: detailServings,
+                        ),
+                        style: muted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -627,47 +909,79 @@ extension _MiseViews on _PlanningPageState {
     );
     if (picked == null || !mounted) return;
     final target = mondayOf(picked);
-    final offset = DateTime.utc(target.year, target.month, target.day)
-        .difference(DateTime.utc(week.year, week.month, week.day)).inDays ~/ 7;
+    final offset =
+        DateTime.utc(
+          target.year,
+          target.month,
+          target.day,
+        ).difference(DateTime.utc(week.year, week.month, week.day)).inDays ~/
+        7;
     if (offset != 0) await changeWeek(offset);
   }
 
   Widget weekPicker() {
     final current = mondayOf(pantryToday);
-    final offset = DateTime.utc(week.year, week.month, week.day)
-        .difference(DateTime.utc(current.year, current.month, current.day)).inDays ~/ 7;
-    final label = offset == 0 ? 'Diese Woche' : offset == 1 ? 'Nächste Woche' : offset == -1 ? 'Letzte Woche' : offset > 1 ? 'In $offset Wochen' : 'Vor ${-offset} Wochen';
-    return Column(children: [Row(
-    children: [
-      IconButton(
-        tooltip: 'Vorherige Woche',
-        onPressed: saving || loading ? null : () => changeWeek(-1),
-        icon: const Icon(Icons.chevron_left),
-      ),
-      Expanded(
-        child: TextButton(
-          onPressed: saving || loading ? null : pickPlanWeek,
-          child: Column(children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 3),
-            Text('${displayDate(week)} – ${displayDate(DateTime(week.year, week.month, week.day + 6))}', textAlign: TextAlign.center, style: muted),
-            const SizedBox(height: 3),
-            const Text('Woche auswählen', style: TextStyle(fontSize: 11)),
-          ]),
+    final offset =
+        DateTime.utc(week.year, week.month, week.day)
+            .difference(DateTime.utc(current.year, current.month, current.day))
+            .inDays ~/
+        7;
+    final label = offset == 0
+        ? 'Diese Woche'
+        : offset == 1
+        ? 'Nächste Woche'
+        : offset == -1
+        ? 'Letzte Woche'
+        : offset > 1
+        ? 'In $offset Wochen'
+        : 'Vor ${-offset} Wochen';
+    return Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Vorherige Woche',
+              onPressed: saving || loading ? null : () => changeWeek(-1),
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: saving || loading ? null : pickPlanWeek,
+                child: Column(
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${displayDate(week)} – ${displayDate(DateTime(week.year, week.month, week.day + 6))}',
+                      textAlign: TextAlign.center,
+                      style: muted,
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Woche auswählen',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Nächste Woche',
+              onPressed: saving || loading ? null : () => changeWeek(1),
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
         ),
-      ),
-      IconButton(
-        tooltip: 'Nächste Woche',
-        onPressed: saving || loading ? null : () => changeWeek(1),
-        icon: const Icon(Icons.chevron_right),
-      ),
-    ],
-    ),
-    if (offset != 0) TextButton(
-      onPressed: saving || loading ? null : () => changeWeek(-offset),
-      child: const Text('Zur aktuellen Woche'),
-    ),
-    ]);
+        if (offset != 0)
+          TextButton(
+            onPressed: saving || loading ? null : () => changeWeek(-offset),
+            child: const Text('Zur aktuellen Woche'),
+          ),
+      ],
+    );
   }
 
   List<Widget> planView() => [
@@ -677,13 +991,14 @@ extension _MiseViews on _PlanningPageState {
     gap(18),
     primary('Wochenplan bearbeiten', editExistingPlan),
     gap(12),
-    TextButton(
-      onPressed: () => update(() => surveyStep = 1),
-      child: const Text('Planungsantworten ändern'),
-    ),
     Row(
       children: [
-        Expanded(child: Text('Wochenübersicht', style: Theme.of(context).textTheme.titleLarge)),
+        Expanded(
+          child: Text(
+            'Wochenübersicht',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
         TextButton(onPressed: editBudget, child: const Text('Budget')),
       ],
     ),
@@ -836,7 +1151,8 @@ extension _MiseViews on _PlanningPageState {
                 IconButton(
                   key: ValueKey('decrease-$day'),
                   tooltip: 'Weniger Portionen',
-                  onPressed: saving || meal.preparedConsumed || meal.servings <= 1
+                  onPressed:
+                      saving || meal.preparedConsumed || meal.servings <= 1
                       ? null
                       : () => adjustServings(day, -1),
                   icon: const Icon(Icons.remove, size: 18),
@@ -845,16 +1161,50 @@ extension _MiseViews on _PlanningPageState {
                 IconButton(
                   key: ValueKey('increase-$day'),
                   tooltip: 'Mehr Portionen',
-                  onPressed: saving || meal.preparedConsumed ? null : () => adjustServings(day, 1),
+                  onPressed: saving || meal.preparedConsumed
+                      ? null
+                      : () => adjustServings(day, 1),
                   icon: const Icon(Icons.add, size: 18),
                 ),
                 TextButton(
                   onPressed: () => details(meal.recipe),
                   child: const Text('Rezept'),
                 ),
-                if (meal.preparedMealId != null) TextButton.icon(onPressed: saving || meal.preparedConsumed ? null : () => consumePreparedMeal(day), icon: const Icon(Icons.check), label: Text(meal.preparedConsumed ? 'Gegessen ✓' : 'Als gegessen markieren')),
-                if (meal.preparedMealId == null) TextButton.icon(onPressed: () => openCooking(meal.recipe, portions: meal.servings, day: day), icon: const Icon(Icons.restaurant_outlined, size: 18), label: Text(cookedEntries.contains('${dateKey(week.add(Duration(days: day)))}:${meal.recipe.id}') ? 'Gekocht ✓' : 'Kochen starten')),
-                if (meal.preparedMealId == null) TextButton(onPressed: saving ? null : () => openHouseholdMeals(day: day), child: const Text('Pro Person planen')),
+                if (meal.preparedMealId != null)
+                  TextButton.icon(
+                    onPressed: saving || meal.preparedConsumed
+                        ? null
+                        : () => consumePreparedMeal(day),
+                    icon: const Icon(Icons.check),
+                    label: Text(
+                      meal.preparedConsumed
+                          ? 'Gegessen ✓'
+                          : 'Als gegessen markieren',
+                    ),
+                  ),
+                if (meal.preparedMealId == null)
+                  TextButton.icon(
+                    onPressed: () => openCooking(
+                      meal.recipe,
+                      portions: meal.servings,
+                      day: day,
+                    ),
+                    icon: const Icon(Icons.restaurant_outlined, size: 18),
+                    label: Text(
+                      cookedEntries.contains(
+                            '${dateKey(week.add(Duration(days: day)))}:${meal.recipe.id}',
+                          )
+                          ? 'Gekocht ✓'
+                          : 'Kochen starten',
+                    ),
+                  ),
+                if (meal.preparedMealId == null)
+                  TextButton(
+                    onPressed: saving
+                        ? null
+                        : () => openHouseholdMeals(day: day),
+                    child: const Text('Pro Person planen'),
+                  ),
                 IconButton(
                   key: ValueKey('remove-$day'),
                   tooltip: 'Gericht entfernen',
@@ -879,7 +1229,10 @@ extension _MiseViews on _PlanningPageState {
         .where((i) => checked.contains((i.ingredientId, i.unit)))
         .length;
     return [
-      proposalBack('Zurück zum Warenkorb', () => update(() => shoppingPage = 0)),
+      proposalBack(
+        'Zurück zum Warenkorb',
+        () => update(() => shoppingPage = 0),
+      ),
       title('Deine Einkaufsliste'),
       gap(8),
       Text('${shopping.length} Zutaten · Für euren Wochenplan', style: muted),
@@ -980,6 +1333,8 @@ extension _MiseViews on _PlanningPageState {
 
   List<Widget> householdView() => [
     title('Zusammen isst’s besser.'),
+    gap(12),
+    recipeAction('Essenspräferenzen', false, () => editFoodPreferences()),
     gap(8),
     Text('Ein Haushalt. Ein Plan. Eure Ziele.', style: muted),
     gap(22),
@@ -1073,15 +1428,31 @@ extension _MiseViews on _PlanningPageState {
     ),
     gap(24),
     section('Haushalt gemeinsam verwalten'),
-    recipeAction('Mitglieder, Rollen & Einladungen', false, () => update(() => householdPage = 1)),
+    recipeAction(
+      'Mitglieder, Rollen & Einladungen',
+      false,
+      () => update(() => householdPage = 1),
+    ),
     gap(12),
-    recipeAction('Gemeinsame & persönliche Vorlieben', false, () => update(() => householdPage = 5)),
+    recipeAction(
+      'Gemeinsame & persönliche Vorlieben',
+      false,
+      () => update(() => householdPage = 5),
+    ),
     gap(12),
     recipeAction('Gerichte & Portionen pro Person', false, openHouseholdMeals),
     gap(12),
-    recipeAction('Ausschlüsse & Abneigungen', false, () => update(() => householdPage = 7)),
+    recipeAction(
+      'Ausschlüsse & Abneigungen',
+      false,
+      () => update(() => householdPage = 7),
+    ),
     gap(24),
-    recipeAction('Wochenrückblick · Plan & Ist', false, () => update(() => householdPage = 11)),
+    recipeAction(
+      'Wochenrückblick · Plan & Ist',
+      false,
+      () => update(() => householdPage = 11),
+    ),
     gap(24),
     section('Dein Konto'),
     if (widget.user?.email != null) Text(widget.user!.email!, style: muted),
@@ -1128,7 +1499,9 @@ extension _MiseViews on _PlanningPageState {
                 saving
                     ? 'Wird gespeichert …'
                     : saveError != null
-                    ? weekSaveUncertain ? 'Speicherstand unklar' : 'Nicht gespeichert'
+                    ? weekSaveUncertain
+                          ? 'Speicherstand unklar'
+                          : 'Nicht gespeichert'
                     : loading
                     ? 'Wird geladen …'
                     : 'Gespeichert',

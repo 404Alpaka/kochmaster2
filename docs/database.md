@@ -114,3 +114,13 @@ keine Prüfung von RLS und Grants im Zielprojekt.
 Referenz: https://supabase.com/docs/guides/getting-started/quickstarts/flutter
 
 
+
+
+## Regelbasierter Planer: Migrationen 005 und 006
+
+Der Nutzer hat `202611190005_weekly_planner.sql` und
+`202611190006_planner_household_resources.sql` angewandt. Die öffentliche
+Schema-Prüfung bestätigt die sieben Planerfelder und gesperrte anonyme
+Haushaltsschreibzugriffe. `tool/test_weekly_planner_schema.mjs` prüft beide
+Migrationen einschließlich der Haushalts-SQL-Tests lokal mit PGlite.
+Details, Datenpflege und Prüfbefunde: [Wochenplaner](weekly-planner.md).

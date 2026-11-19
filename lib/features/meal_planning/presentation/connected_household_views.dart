@@ -1,6 +1,20 @@
 part of 'planning_page.dart';
 
 extension _ConnectedHouseholdViews on _PlanningPageState {
+  List<PlanningDiner> get planningDiners => activeHousehold == null ? [] : [
+    for(final member in activeHousehold!.members) PlanningDiner.fromJson(member['user_id'] as String, member['email'] as String? ?? 'Mitglied', householdDinerRules[member['user_id']] ?? {}),
+    for(final entry in householdDinerRules.entries.where((e)=>e.key.startsWith('guest:'))) PlanningDiner.fromJson(entry.key,entry.value['name'] as String? ?? 'Weitere Person',entry.value),
+  ];
+
+  Future<void> editPlanningDiners() async {
+    if(activeHousehold == null) return;
+    final target = activeHouseholdId;
+    final result = await Navigator.of(context).push<List<PlanningDiner>>(MaterialPageRoute(builder:(_)=>HouseholdDinersPage(initial:planningDiners,readOnly:readOnlyShared)));
+    if(result == null || !mounted || readOnlyShared || activeHouseholdId != target) return;
+    update(() { householdDinerRules..clear()..addAll({for(final d in result) d.id:d.toJson()}); });
+    savePreferences();
+  }
+
   Future<String?> householdText(
     String title,
     String label, {
@@ -50,8 +64,9 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
         saving ||
         loading ||
         !await flushAccountData() ||
-        !mounted)
+        !mounted) {
       return;
+    }
     update(() {
       householdBusy = true;
       householdError = null;
@@ -242,6 +257,8 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
   List<Widget> connectedHouseholdView() => [
     title('Zusammen isst’s besser.'),
     gap(12),
+    recipeAction('Essenspräferenzen', false, () => editFoodPreferences()),
+    gap(12),
     Text('Dein Konto. Eure gemeinsame Küche.', style: muted),
     gap(20),
     if (readSession('mise-pending-household-invite') != null) ...[
@@ -325,6 +342,7 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       gap(16),
     ],
     if (activeHousehold != null) ...[
+      recipeAction('Mitessende & feste Regeln',false,editPlanningDiners), gap(16),
       section(activeHousehold!.name),
       Text(
         'Deine Rolle: ${householdRoleLabel(activeHousehold!.role)}',
@@ -412,7 +430,7 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       gap(20),
       surveyCard(
         'Deine Daten bleiben deine Daten',
-        'Persönliche Regeln bearbeitest du im Bereich Privat. Sie werden für deine Vorschläge zusätzlich berücksichtigt. Für weitere Mitglieder gibt es keine erfundenen Gesundheitsprofile.',
+        'Persönliche Regeln bleiben privat. Zusätzlich gelten die ausdrücklich erfassten Regeln aller aktiven Mitessenden. Diese gemeinsamen Angaben sind im Haushalt sichtbar; Bewertungen und Notizen werden nicht übernommen.',
       ),
       gap(20),
     ] else ...[

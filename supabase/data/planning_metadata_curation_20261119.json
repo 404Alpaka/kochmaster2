@@ -1,0 +1,1083 @@
+{
+  "reviewed": [
+    {
+      "id": "example-01",
+      "expected_name": "Tomaten-Spinat-Pasta",
+      "expected_minutes": 20,
+      "expected_servings": 2,
+      "expected_steps_hash": "4cbc095bd1af0e52a4ab1f8b71853da3",
+      "expected_ingredients": [
+        {
+          "id": "garlic",
+          "name": "Knoblauchzehe",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "pasta",
+          "name": "Nudeln",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "spinach",
+          "name": "Spinat",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 300,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "pasta",
+      "dish_type": "pasta",
+      "main_ingredient": "tomaten",
+      "preparation_method": "kochen und dünsten",
+      "flavors": [],
+      "expected_steps": [
+        "Nudeln nach Packungsangabe in Wasser garen und abgießen.",
+        "Knoblauch schälen und hacken, Tomaten würfeln. Beides im Öl etwa 5 Minuten dünsten.",
+        "Spinat waschen und in der Sauce zusammenfallen lassen. Mit den Nudeln mischen."
+      ]
+    },
+    {
+      "id": "example-02",
+      "expected_name": "Brokkoli-Reis-Pfanne",
+      "expected_minutes": 25,
+      "expected_servings": 2,
+      "expected_steps_hash": "5ae9f542c27ad8c0d3c83aef93c17328",
+      "expected_ingredients": [
+        {
+          "id": "broccoli",
+          "name": "Brokkoli",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "rice",
+          "name": "Reis",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 200,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "rice",
+      "dish_type": "pfannengericht",
+      "main_ingredient": "brokkoli",
+      "preparation_method": "kochen und dünsten",
+      "flavors": [],
+      "expected_steps": [
+        "Reis nach Packungsangabe garen.",
+        "Zwiebel schälen und würfeln, im Öl glasig dünsten. Brokkoliröschen mit etwas Wasser zugeben und zugedeckt 8 Minuten garen.",
+        "Gewürfelte Tomaten zugeben und 5 Minuten erhitzen. Reis untermischen."
+      ]
+    },
+    {
+      "id": "example-03",
+      "expected_name": "Rote-Linsen-Suppe",
+      "expected_minutes": 30,
+      "expected_servings": 2,
+      "expected_steps_hash": "ece716809cd84f0763f4dd2e0afa2ccf",
+      "expected_ingredients": [
+        {
+          "id": "carrot",
+          "name": "Karotten",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "lentils",
+          "name": "Rote Linsen",
+          "quantity": 160,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 10,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 700,
+          "unit": "ml"
+        }
+      ],
+      "primary_side": "none",
+      "dish_type": "suppe",
+      "main_ingredient": "rote linsen",
+      "preparation_method": "köcheln",
+      "flavors": [],
+      "expected_steps": [
+        "Zwiebel und Karotten schälen, würfeln und im Öl 4 Minuten anschwitzen.",
+        "Linsen abspülen, mit der Gemüsebrühe zugeben und aufkochen.",
+        "Etwa 18 Minuten sanft köcheln, bis die Linsen weich sind. Nach Wunsch teilweise pürieren."
+      ]
+    },
+    {
+      "id": "example-04",
+      "expected_name": "Kartoffel-Spinat-Frittata",
+      "expected_minutes": 35,
+      "expected_servings": 2,
+      "expected_steps_hash": "8983ba2d70237d9fa48759bda334c8a6",
+      "expected_ingredients": [
+        {
+          "id": "egg",
+          "name": "Ei",
+          "quantity": 4,
+          "unit": "Stück"
+        },
+        {
+          "id": "milk",
+          "name": "Milch",
+          "quantity": 60,
+          "unit": "ml"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "potato",
+          "name": "Kartoffeln",
+          "quantity": 350,
+          "unit": "g"
+        },
+        {
+          "id": "spinach",
+          "name": "Spinat",
+          "quantity": 150,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "potato",
+      "dish_type": "frittata",
+      "main_ingredient": "ei",
+      "preparation_method": "braten und stocken",
+      "flavors": [],
+      "expected_steps": [
+        "Kartoffeln schälen, klein würfeln und etwa 10 Minuten in Wasser vorgaren. Abgießen.",
+        "Kartoffeln im Öl anbraten. Gewaschenen Spinat zugeben und zusammenfallen lassen.",
+        "Eier mit Milch verquirlen, zugießen und zugedeckt bei niedriger Hitze etwa 12 Minuten vollständig stocken lassen."
+      ]
+    },
+    {
+      "id": "example-05",
+      "expected_name": "Kichererbsen-Curry",
+      "expected_minutes": 25,
+      "expected_servings": 2,
+      "expected_steps_hash": "96b9070f747267d50e5de98f543773ca",
+      "expected_ingredients": [
+        {
+          "id": "chickpeas",
+          "name": "Kichererbsen, gekocht und abgetropft",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "id": "coconut",
+          "name": "Kokosmilch",
+          "quantity": 250,
+          "unit": "ml"
+        },
+        {
+          "id": "curry",
+          "name": "Currypulver",
+          "quantity": 6,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 10,
+          "unit": "ml"
+        },
+        {
+          "id": "rice",
+          "name": "Reis",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 200,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "rice",
+      "dish_type": "curry",
+      "main_ingredient": "kichererbsen, gekocht und abgetropft",
+      "preparation_method": "köcheln",
+      "flavors": [
+        "curry"
+      ],
+      "expected_steps": [
+        "Reis nach Packungsangabe garen.",
+        "Tomaten würfeln und im Öl 3 Minuten anschwitzen. Currypulver kurz mitrösten.",
+        "Abgetropfte Kichererbsen und Kokosmilch zugeben. 12 Minuten köcheln und mit dem Reis servieren."
+      ]
+    },
+    {
+      "id": "example-06",
+      "expected_name": "Couscous-Feta-Salat",
+      "expected_minutes": 20,
+      "expected_servings": 2,
+      "expected_steps_hash": "56826280fcca6cfa92dbbacb4a2d94ba",
+      "expected_ingredients": [
+        {
+          "id": "couscous",
+          "name": "Couscous",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "cucumber",
+          "name": "Gurke",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "feta",
+          "name": "Feta",
+          "quantity": 120,
+          "unit": "g"
+        },
+        {
+          "id": "lemon",
+          "name": "Zitronensaft",
+          "quantity": 20,
+          "unit": "ml"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 200,
+          "unit": "ml"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 200,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "couscous",
+      "dish_type": "salat",
+      "main_ingredient": "feta",
+      "preparation_method": "quellen und mischen",
+      "flavors": [
+        "zitronig"
+      ],
+      "expected_steps": [
+        "Heiße Gemüsebrühe über den Couscous geben und nach Packungsangabe quellen lassen. Mit einer Gabel lockern.",
+        "Gurke und Tomaten waschen und klein würfeln. Feta zerbröseln.",
+        "Alles mit Zitronensaft mischen und lauwarm servieren."
+      ]
+    },
+    {
+      "id": "example-07",
+      "expected_name": "Bananen-Porridge",
+      "expected_minutes": 10,
+      "expected_servings": 2,
+      "expected_steps_hash": "a5b05112098eec5a3d707def3a5e3f8b",
+      "expected_ingredients": [
+        {
+          "id": "banana",
+          "name": "Banane",
+          "quantity": 2,
+          "unit": "Stück"
+        },
+        {
+          "id": "cinnamon",
+          "name": "Zimt",
+          "quantity": 2,
+          "unit": "g"
+        },
+        {
+          "id": "milk",
+          "name": "Milch",
+          "quantity": 400,
+          "unit": "ml"
+        },
+        {
+          "id": "oats",
+          "name": "Haferflocken",
+          "quantity": 100,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "oats",
+      "dish_type": "porridge",
+      "main_ingredient": "haferflocken",
+      "preparation_method": "köcheln",
+      "flavors": [
+        "zimtig"
+      ],
+      "expected_steps": [
+        "Haferflocken mit Milch unter Rühren aufkochen.",
+        "Bei niedriger Hitze etwa 5 Minuten quellen lassen.",
+        "Bananen schälen und in Scheiben schneiden. Porridge mit Bananen und Zimt anrichten."
+      ]
+    },
+    {
+      "id": "example-08",
+      "expected_name": "Apfel-Joghurt-Müsli",
+      "expected_minutes": 10,
+      "expected_servings": 2,
+      "expected_steps_hash": "3f3e5fcb48f044b99f087b13e343755a",
+      "expected_ingredients": [
+        {
+          "id": "apple",
+          "name": "Apfel",
+          "quantity": 2,
+          "unit": "Stück"
+        },
+        {
+          "id": "honey",
+          "name": "Honig",
+          "quantity": 15,
+          "unit": "g"
+        },
+        {
+          "id": "oats",
+          "name": "Haferflocken",
+          "quantity": 100,
+          "unit": "g"
+        },
+        {
+          "id": "yogurt",
+          "name": "Naturjoghurt",
+          "quantity": 300,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "oats",
+      "dish_type": "müsli",
+      "main_ingredient": "haferflocken",
+      "preparation_method": "mischen",
+      "flavors": [],
+      "expected_steps": [
+        "Äpfel waschen, entkernen und fein würfeln.",
+        "Haferflocken mit Joghurt und Honig verrühren.",
+        "Apfelstücke untermischen und kurz quellen lassen."
+      ]
+    },
+    {
+      "id": "example-09",
+      "expected_name": "Chili sin Carne",
+      "expected_minutes": 35,
+      "expected_servings": 2,
+      "expected_steps_hash": "d2f0ad192d3597ba55ce4fb3daa767b4",
+      "expected_ingredients": [
+        {
+          "id": "beans",
+          "name": "Kidneybohnen, gekocht und abgetropft",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "id": "corn",
+          "name": "Mais, abgetropft",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "curry",
+          "name": "Currypulver",
+          "quantity": 4,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "passata",
+          "name": "Passierte Tomaten",
+          "quantity": 400,
+          "unit": "ml"
+        },
+        {
+          "id": "pepper",
+          "name": "Paprika",
+          "quantity": 1,
+          "unit": "Stück"
+        }
+      ],
+      "primary_side": "none",
+      "dish_type": "eintopf",
+      "main_ingredient": "kidneybohnen, gekocht und abgetropft",
+      "preparation_method": "köcheln",
+      "flavors": [
+        "curry"
+      ],
+      "expected_steps": [
+        "Zwiebel schälen, Paprika entkernen und beides würfeln. Im Öl 5 Minuten dünsten.",
+        "Currypulver kurz mitrösten, passierte Tomaten zugeben und 10 Minuten köcheln.",
+        "Abgetropfte Kidneybohnen und Mais zugeben und weitere 10 Minuten erhitzen."
+      ]
+    },
+    {
+      "id": "example-10",
+      "expected_name": "Champignon-Rahm-Pasta",
+      "expected_minutes": 25,
+      "expected_servings": 2,
+      "expected_steps_hash": "0c73c345a202553840410a8780836bc4",
+      "expected_ingredients": [
+        {
+          "id": "cream",
+          "name": "Sahne",
+          "quantity": 150,
+          "unit": "ml"
+        },
+        {
+          "id": "mushrooms",
+          "name": "Champignons",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 10,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "pasta",
+          "name": "Nudeln",
+          "quantity": 200,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "pasta",
+      "dish_type": "pasta",
+      "main_ingredient": "champignons",
+      "preparation_method": "kochen und braten",
+      "flavors": [
+        "cremig"
+      ],
+      "expected_steps": [
+        "Nudeln nach Packungsangabe garen.",
+        "Pilze putzen und in Scheiben schneiden, Zwiebel schälen und würfeln. Im Öl 7 Minuten braten.",
+        "Sahne zugießen, 5 Minuten köcheln und mit den abgetropften Nudeln vermengen."
+      ]
+    },
+    {
+      "id": "example-11",
+      "expected_name": "Ofenkartoffeln mit Knoblauchquark",
+      "expected_minutes": 45,
+      "expected_servings": 2,
+      "expected_steps_hash": "e013909dd675102ffaf738ba07d6e578",
+      "expected_ingredients": [
+        {
+          "id": "garlic",
+          "name": "Knoblauchzehe",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "lemon",
+          "name": "Zitronensaft",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 20,
+          "unit": "ml"
+        },
+        {
+          "id": "potato",
+          "name": "Kartoffeln",
+          "quantity": 600,
+          "unit": "g"
+        },
+        {
+          "id": "quark",
+          "name": "Magerquark",
+          "quantity": 250,
+          "unit": "g"
+        },
+        {
+          "id": "yogurt",
+          "name": "Naturjoghurt",
+          "quantity": 100,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "potato",
+      "dish_type": "ofengericht",
+      "main_ingredient": "kartoffeln",
+      "preparation_method": "backen",
+      "flavors": [
+        "knoblauch"
+      ],
+      "expected_steps": [
+        "Backofen auf 200 Grad Ober-/Unterhitze vorheizen. Kartoffeln waschen und in Spalten schneiden.",
+        "Kartoffeln mit Öl mischen und auf einem Blech etwa 35 Minuten backen, zwischendurch wenden.",
+        "Knoblauch schälen und fein hacken. Mit Quark, Joghurt und Zitronensaft verrühren und zu den Kartoffeln reichen."
+      ]
+    },
+    {
+      "id": "example-12",
+      "expected_name": "Zucchini-Tomaten-Reis",
+      "expected_minutes": 30,
+      "expected_servings": 2,
+      "expected_steps_hash": "b97da5efbc666cb3b11caaf2cf8684d0",
+      "expected_ingredients": [
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "passata",
+          "name": "Passierte Tomaten",
+          "quantity": 250,
+          "unit": "ml"
+        },
+        {
+          "id": "rice",
+          "name": "Reis",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 350,
+          "unit": "ml"
+        },
+        {
+          "id": "zucchini",
+          "name": "Zucchini",
+          "quantity": 300,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "rice",
+      "dish_type": "reisgericht",
+      "main_ingredient": "zucchini",
+      "preparation_method": "köcheln",
+      "flavors": [],
+      "expected_steps": [
+        "Zwiebel schälen und würfeln, Zucchini waschen und klein schneiden. Im Öl 5 Minuten dünsten.",
+        "Reis, passierte Tomaten und Brühe zugeben und aufkochen.",
+        "Zugedeckt etwa 20 Minuten sanft köcheln, bis der Reis gar ist. Regelmäßig rühren und bei Bedarf Wasser ergänzen."
+      ]
+    },
+    {
+      "id": "example-13",
+      "expected_name": "Avocado-Ei-Brot",
+      "expected_minutes": 15,
+      "expected_servings": 2,
+      "expected_steps_hash": "4f4bf3317e02411354ec91a4a951292e",
+      "expected_ingredients": [
+        {
+          "id": "avocado",
+          "name": "Avocado",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "bread",
+          "name": "Vollkornbrot",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "egg",
+          "name": "Ei",
+          "quantity": 2,
+          "unit": "Stück"
+        },
+        {
+          "id": "lemon",
+          "name": "Zitronensaft",
+          "quantity": 15,
+          "unit": "ml"
+        }
+      ],
+      "primary_side": "bread",
+      "dish_type": "belegtes brot",
+      "main_ingredient": "avocado",
+      "preparation_method": "kochen und anrichten",
+      "flavors": [
+        "zitronig"
+      ],
+      "expected_steps": [
+        "Eier in kochendem Wasser etwa 10 Minuten hart kochen, abschrecken und schälen.",
+        "Avocado halbieren, Kern entfernen und Fruchtfleisch mit Zitronensaft zerdrücken.",
+        "Brot mit Avocado bestreichen. Eier in Scheiben schneiden und darauf verteilen."
+      ]
+    },
+    {
+      "id": "example-14",
+      "expected_name": "Tomaten-Mozzarella-Salat",
+      "expected_minutes": 15,
+      "expected_servings": 2,
+      "expected_steps_hash": "385c2da680270b03afd911a8f34754d0",
+      "expected_ingredients": [
+        {
+          "id": "bread",
+          "name": "Vollkornbrot",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "lemon",
+          "name": "Zitronensaft",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "mozzarella",
+          "name": "Mozzarella",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 20,
+          "unit": "ml"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 400,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "bread",
+      "dish_type": "salat",
+      "main_ingredient": "tomaten",
+      "preparation_method": "anrichten",
+      "flavors": [
+        "zitronig"
+      ],
+      "expected_steps": [
+        "Tomaten waschen und in Scheiben schneiden. Mozzarella abtropfen lassen und schneiden.",
+        "Tomaten und Mozzarella auf zwei Tellern verteilen.",
+        "Öl und Zitronensaft darübergeben. Mit dem Brot servieren."
+      ]
+    },
+    {
+      "id": "example-15",
+      "expected_name": "Tofu-Gemüse-Pfanne",
+      "expected_minutes": 30,
+      "expected_servings": 2,
+      "expected_steps_hash": "3e7093cd1171983a6fa8cd3ba89d8c16",
+      "expected_ingredients": [
+        {
+          "id": "broccoli",
+          "name": "Brokkoli",
+          "quantity": 250,
+          "unit": "g"
+        },
+        {
+          "id": "carrot",
+          "name": "Karotten",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 20,
+          "unit": "ml"
+        },
+        {
+          "id": "rice",
+          "name": "Reis",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "soy",
+          "name": "Sojasauce",
+          "quantity": 30,
+          "unit": "ml"
+        },
+        {
+          "id": "tofu",
+          "name": "Naturtofu",
+          "quantity": 250,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "rice",
+      "dish_type": "pfannengericht",
+      "main_ingredient": "naturtofu",
+      "preparation_method": "kochen und braten",
+      "flavors": [],
+      "expected_steps": [
+        "Reis nach Packungsangabe garen. Tofu trocken tupfen und würfeln.",
+        "Tofu im Öl etwa 6 Minuten anbraten. Brokkoli in kleine Röschen teilen, Karotten schälen und in dünne Scheiben schneiden.",
+        "Gemüse mit etwas Wasser zum Tofu geben, zugedeckt 8 Minuten garen und mit Sojasauce mischen. Zum Reis servieren."
+      ]
+    },
+    {
+      "id": "example-16",
+      "expected_name": "Erbsen-Risotto",
+      "expected_minutes": 35,
+      "expected_servings": 2,
+      "expected_steps_hash": "b82b830ec6c6ea50994667168b08f2c1",
+      "expected_ingredients": [
+        {
+          "id": "cheese",
+          "name": "Geriebener Gouda",
+          "quantity": 50,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "peas",
+          "name": "Erbsen, tiefgekühlt",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "rice",
+          "name": "Reis",
+          "quantity": 180,
+          "unit": "g"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 700,
+          "unit": "ml"
+        }
+      ],
+      "primary_side": "rice",
+      "dish_type": "risotto",
+      "main_ingredient": "erbsen, tiefgekühlt",
+      "preparation_method": "köcheln",
+      "flavors": [],
+      "expected_steps": [
+        "Brühe erhitzen. Zwiebel schälen, würfeln und im Öl glasig dünsten.",
+        "Reis zugeben. Heiße Brühe nach und nach angießen und unter regelmäßigem Rühren etwa 20 Minuten garen.",
+        "Erbsen zugeben und mindestens 5 Minuten vollständig durchgaren. Käse unterrühren."
+      ]
+    },
+    {
+      "id": "example-17",
+      "expected_name": "Gemüse-Bulgur",
+      "expected_minutes": 25,
+      "expected_servings": 2,
+      "expected_steps_hash": "76623d46e2ef4af6907b1fbb6abdd11c",
+      "expected_ingredients": [
+        {
+          "id": "bulgur",
+          "name": "Bulgur",
+          "quantity": 160,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "pepper",
+          "name": "Paprika",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 350,
+          "unit": "ml"
+        },
+        {
+          "id": "tomato",
+          "name": "Tomaten",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "zucchini",
+          "name": "Zucchini",
+          "quantity": 200,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "bulgur",
+      "dish_type": "getreidegericht",
+      "main_ingredient": null,
+      "preparation_method": "köcheln",
+      "flavors": [],
+      "expected_steps": [
+        "Zucchini und Tomaten waschen und würfeln. Paprika entkernen und klein schneiden.",
+        "Gemüse im Öl 5 Minuten dünsten. Bulgur und heiße Brühe zugeben.",
+        "Nach Packungsangabe etwa 15 Minuten sanft garen. Bei Bedarf etwas Wasser ergänzen."
+      ]
+    },
+    {
+      "id": "example-18",
+      "expected_name": "Herzhafte Gemüsepfannkuchen",
+      "expected_minutes": 30,
+      "expected_servings": 2,
+      "expected_steps_hash": "0f43c0cb45c100c826877535d1258fe4",
+      "expected_ingredients": [
+        {
+          "id": "carrot",
+          "name": "Karotten",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "egg",
+          "name": "Ei",
+          "quantity": 2,
+          "unit": "Stück"
+        },
+        {
+          "id": "flour",
+          "name": "Weizenmehl",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "milk",
+          "name": "Milch",
+          "quantity": 250,
+          "unit": "ml"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 20,
+          "unit": "ml"
+        },
+        {
+          "id": "zucchini",
+          "name": "Zucchini",
+          "quantity": 150,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "none",
+      "dish_type": "pfannkuchen",
+      "main_ingredient": null,
+      "preparation_method": "braten",
+      "flavors": [],
+      "expected_steps": [
+        "Mehl, Eier und Milch glatt rühren und 5 Minuten ruhen lassen.",
+        "Karotten schälen und mit der gewaschenen Zucchini fein raspeln. Raspeln unter den Teig heben.",
+        "Öl portionsweise erhitzen. Vier dünne Pfannkuchen bei mittlerer Hitze von beiden Seiten je 3 bis 4 Minuten vollständig durchbacken."
+      ]
+    },
+    {
+      "id": "example-19",
+      "expected_name": "Brokkoli-Kartoffel-Auflauf",
+      "expected_minutes": 50,
+      "expected_servings": 2,
+      "expected_steps_hash": "dad01538cc6113776001d12dbbbe90f3",
+      "expected_ingredients": [
+        {
+          "id": "broccoli",
+          "name": "Brokkoli",
+          "quantity": 300,
+          "unit": "g"
+        },
+        {
+          "id": "cheese",
+          "name": "Geriebener Gouda",
+          "quantity": 100,
+          "unit": "g"
+        },
+        {
+          "id": "cream",
+          "name": "Sahne",
+          "quantity": 150,
+          "unit": "ml"
+        },
+        {
+          "id": "milk",
+          "name": "Milch",
+          "quantity": 100,
+          "unit": "ml"
+        },
+        {
+          "id": "potato",
+          "name": "Kartoffeln",
+          "quantity": 400,
+          "unit": "g"
+        }
+      ],
+      "primary_side": "potato",
+      "dish_type": "auflauf",
+      "main_ingredient": "brokkoli",
+      "preparation_method": "backen",
+      "flavors": [
+        "cremig"
+      ],
+      "expected_steps": [
+        "Backofen auf 200 Grad Ober-/Unterhitze vorheizen. Kartoffeln schälen und in dünne Scheiben schneiden.",
+        "Kartoffelscheiben 10 Minuten in Wasser vorgaren, Brokkoliröschen die letzten 4 Minuten mitgaren. Abgießen.",
+        "Gemüse in eine Auflaufform geben. Milch und Sahne darübergeben, mit Käse bestreuen und etwa 25 Minuten goldbraun backen."
+      ]
+    },
+    {
+      "id": "example-20",
+      "expected_name": "Linsen-Bolognese",
+      "expected_minutes": 35,
+      "expected_servings": 2,
+      "expected_steps_hash": "2a9f4b8801f82b69d4b6e8b57f76634e",
+      "expected_ingredients": [
+        {
+          "id": "carrot",
+          "name": "Karotten",
+          "quantity": 150,
+          "unit": "g"
+        },
+        {
+          "id": "lentils",
+          "name": "Rote Linsen",
+          "quantity": 120,
+          "unit": "g"
+        },
+        {
+          "id": "oil",
+          "name": "Olivenöl",
+          "quantity": 15,
+          "unit": "ml"
+        },
+        {
+          "id": "onion",
+          "name": "Zwiebel",
+          "quantity": 1,
+          "unit": "Stück"
+        },
+        {
+          "id": "passata",
+          "name": "Passierte Tomaten",
+          "quantity": 400,
+          "unit": "ml"
+        },
+        {
+          "id": "pasta",
+          "name": "Nudeln",
+          "quantity": 200,
+          "unit": "g"
+        },
+        {
+          "id": "stock",
+          "name": "Gemüsebrühe",
+          "quantity": 250,
+          "unit": "ml"
+        }
+      ],
+      "primary_side": "pasta",
+      "dish_type": "pasta",
+      "main_ingredient": "rote linsen",
+      "preparation_method": "köcheln",
+      "flavors": [],
+      "expected_steps": [
+        "Zwiebel und Karotten schälen und fein würfeln. Im Öl 5 Minuten dünsten.",
+        "Linsen abspülen, mit passierten Tomaten und Brühe zugeben. 20 bis 25 Minuten köcheln, bis die Linsen weich sind. Bei Bedarf Wasser ergänzen.",
+        "Nudeln nach Packungsangabe garen, abgießen und mit der Linsensauce servieren."
+      ]
+    }
+  ],
+  "needs_recipe_review": [
+    {
+      "id": "614d1ae0-abf3-4c47-8845-9167a9e7d1b1",
+      "name": "Thunfischsalat",
+      "reason": "Zubereitung und Zutaten unvollständig; keine verlässliche Einordnung."
+    },
+    {
+      "id": "6838b094-b540-47d7-bc8d-dff8539fc7cd",
+      "name": "jannic wirs gefeuert",
+      "reason": "Zubereitung und Zutaten unvollständig; keine verlässliche Einordnung."
+    },
+    {
+      "id": "7ec943e4-f288-422a-b98d-b05aa0415771",
+      "name": "Hähnchen mit Nudeln",
+      "reason": "Hähnchen fehlt in der Zutatenliste; Zubereitung unvollständig."
+    }
+  ],
+  "unknown_fields": [
+    "active_minutes",
+    "cost_class",
+    "verified_allergens",
+    "verified_diets"
+  ],
+  "notes": [
+    "Gemüse-Bulgur und Gemüsepfannkuchen haben keine eindeutige einzelne dominante Hauptzutat.",
+    "Frühstücksrezepte bleiben im Katalog; ihre Sichtbarkeit wird weiterhin durch den Abendessen-Filter bestimmt."
+  ]
+}

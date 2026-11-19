@@ -8,16 +8,22 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
 import 'app_bottom_navigation.dart';
+import 'food_preferences_page.dart';
 
 import '../../recipes/data/admin_recipe_repository.dart';
 import '../../recipes/data/supabase_recipe_repository.dart';
 import '../../recipes/presentation/admin_recipes_page.dart';
+import '../../recipes/presentation/recipe_editor_page.dart';
 
 import 'package:supabase/supabase.dart';
 
 import '../../auth/presentation/account_page.dart';
 import '../data/weekly_plan_repository.dart';
 import '../domain/meal_plan.dart';
+import '../domain/weekly_planner.dart';
+import '../domain/planning_resources.dart';
+import '../domain/planning_diner.dart';
+import 'household_diners_page.dart';
 import '../../recipes/domain/recipe.dart';
 import '../../recipes/presentation/recipe_image.dart';
 import '../../account_data/data/account_data_repository.dart';
@@ -44,6 +50,7 @@ part 'cooking_views.dart';
 part 'prepared_meal_views.dart';
 part 'recipe_collection_views.dart';
 part 'weekly_review_views.dart';
+part 'recipe_admin_actions.dart';
 
 class PlanningPage extends StatefulWidget {
   const PlanningPage({
@@ -53,10 +60,12 @@ class PlanningPage extends StatefulWidget {
     this.client,
     this.user,
     this.store,
+    this.adminRepository,
   });
   final SupabaseClient? client;
   final User? user;
   final WeeklyPlanRepository? store;
+  final AdminRecipeRepository? adminRepository;
   final List<Recipe> recipes;
   final bool isDemo;
   @override
@@ -66,12 +75,14 @@ class PlanningPage extends StatefulWidget {
 class _PlanningPageState extends State<PlanningPage> {
   List<Recipe>? refreshedCatalog;
   bool admin = false;
+  bool adminActionBusy = false;
   List<Recipe> get recipes => [
     ...(refreshedCatalog ?? widget.recipes),
     ...personalRecipes.map(
       (r) => recipeFromSnapshot(Map<String, dynamic>.from(r['recipe'] as Map)),
     ),
   ];
+  List<Recipe> get dinnerRecipes => recipes.where(isDinnerRecipe).toList();
   final personalRecipes = <Map<String, dynamic>>[];
   int collectionPage = 0;
   String? recipeCategory;
@@ -127,6 +138,21 @@ class _PlanningPageState extends State<PlanningPage> {
   int startDay = 0;
   Map<int, PlannedMeal>? draft;
   final acceptedDays = <int>{};
+  PlannerResult? plannerResult;
+  int plannerSeed = 0;
+  bool allowPlanRepeats = false;
+  final recipeRatings = <String, int>{};
+  final recipeNotes = <String, String>{};
+  final selfChosenRecipes = <String>{};
+  final deferredRecipes = <String>{};
+  final effortFeedback = <String, int>{};
+  final dislikeFeedback = <String, int>{};
+  final dayTimeLimits = <String, int>{};
+  final householdDinerRules = <String, Map<String, dynamic>>{};
+  final recipeCostEstimates = <String, double>{};
+  String? budgetCostClass;
+  bool usePlanningStock = true;
+  String replacementReason = 'Diese Woche nicht';
   bool proposalConfirmed = false;
   bool editingPlan = false;
   int? swappingDay;
@@ -248,6 +274,17 @@ class _PlanningPageState extends State<PlanningPage> {
     'weeklyReviews': weeklyReviews,
     'nextWeekHints': nextWeekHints,
     'cookingHistory': cookingHistory,
+    'recipeRatings': recipeRatings,
+    'selfChosenRecipes': selfChosenRecipes.toList(),
+    'effortFeedback': effortFeedback,
+    'dislikeFeedback': dislikeFeedback,
+    'dayTimeLimits': dayTimeLimits,
+    'householdDinerRules': householdDinerRules,
+    'recipeCostEstimates': recipeCostEstimates,
+    'budgetCostClass': budgetCostClass,
+    'usePlanningStock': usePlanningStock,
+    'recipeNotes': recipeNotes,
+    'plannerSeed': plannerSeed,
     'household': householdName,
     'householdDemoJoined': householdDemoJoined,
     'demoAlexRole': demoAlexRole,
@@ -292,6 +329,54 @@ class _PlanningPageState extends State<PlanningPage> {
 
   void applyPreferences(Map<String, dynamic> data) {
     rememberedRecipes.clear();
+    selfChosenRecipes
+      ..clear()
+      ..addAll(List<String>.from(data['selfChosenRecipes'] as List? ?? []));
+    for (final entry in {
+      'effortFeedback': effortFeedback,
+      'dislikeFeedback': dislikeFeedback,
+      'dayTimeLimits': dayTimeLimits,
+    }.entries) {
+      entry.value
+        ..clear()
+        ..addAll(
+          (data[entry.key] as Map? ?? {}).map(
+            (k, v) => MapEntry(k as String, (v as num).toInt()),
+          ),
+        );
+    }
+    householdDinerRules
+      ..clear()
+      ..addAll(
+        (data['householdDinerRules'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String, Map<String, dynamic>.from(v as Map)),
+        ),
+      );
+    recipeCostEstimates
+      ..clear()
+      ..addAll(
+        (data['recipeCostEstimates'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String, (v as num).toDouble()),
+        ),
+      );
+    budgetCostClass = data['budgetCostClass'] as String?;
+    usePlanningStock = data['usePlanningStock'] != false;
+    deferredRecipes.clear();
+    recipeRatings
+      ..clear()
+      ..addAll(
+        (data['recipeRatings'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String, (v as num).toInt()),
+        ),
+      );
+    recipeNotes
+      ..clear()
+      ..addAll(
+        (data['recipeNotes'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String, v as String),
+        ),
+      );
+    plannerSeed = (data['plannerSeed'] as num?)?.toInt() ?? 0;
     favoriteRecipes.clear();
     hiddenRecipes.clear();
     weeklyReviews.clear();
@@ -412,7 +497,11 @@ class _PlanningPageState extends State<PlanningPage> {
     } else if (weekRepository != null) {
       loadWeek();
     }
-    if (widget.user != null) checkAdmin();
+    if (widget.adminRepository != null) {
+      admin = true;
+    } else if (widget.user != null) {
+      checkAdmin();
+    }
   }
 
   Future<void> checkAdmin() async {
@@ -477,8 +566,10 @@ class _PlanningPageState extends State<PlanningPage> {
       });
     } catch (error) {
       if (mounted) {
-        final missingRevision = error is PostgrestException &&
-            error.code == '42703' && error.message.contains('revision');
+        final missingRevision =
+            error is PostgrestException &&
+            error.code == '42703' &&
+            error.message.contains('revision');
         setState(
           () => loadError = missingRevision
               ? 'Für das Laden und Speichern fehlt die Datenbankmigration 202611180001_private_week_plan_revisions.sql. Bitte im Supabase SQL Editor ausführen und den Wochenplan erneut laden.'
@@ -516,7 +607,8 @@ class _PlanningPageState extends State<PlanningPage> {
     Map<int, PlannedMeal> nextPlan,
     Set<(String, String)> nextChecked,
   ) async {
-    if (weekConflict || readOnlyShared ||
+    if (weekConflict ||
+        readOnlyShared ||
         (accountConnected && (!accountReady || accountError != null)) ||
         saving ||
         loading ||
@@ -549,7 +641,9 @@ class _PlanningPageState extends State<PlanningPage> {
       if (mounted) {
         setState(() {
           weekSaveUncertain = error is TimeoutException;
-          weekConflict = weekSaveUncertain || (error is PostgrestException && error.code == '40001');
+          weekConflict =
+              weekSaveUncertain ||
+              (error is PostgrestException && error.code == '40001');
           saveError = weekSaveUncertain
               ? 'Die Datenbank hat nicht rechtzeitig geantwortet. Ob die Änderung gespeichert wurde, ist noch unklar. Lade den Wochenplan erneut, bevor du weitere Änderungen speicherst.'
               : weekConflict
@@ -581,10 +675,18 @@ class _PlanningPageState extends State<PlanningPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Woche wechseln?'),
-          content: const Text('Dein unbestätigter Vorschlag wird verworfen. Bereits gespeicherte Wochenpläne bleiben erhalten.'),
+          content: const Text(
+            'Dein unbestätigter Vorschlag wird verworfen. Bereits gespeicherte Wochenpläne bleiben erhalten.',
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hier bleiben')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Woche wechseln')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hier bleiben'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Woche wechseln'),
+            ),
           ],
         ),
       );
@@ -598,9 +700,13 @@ class _PlanningPageState extends State<PlanningPage> {
     setState(() {
       week = DateTime(week.year, week.month, week.day + delta * 7);
       selectedDay = dateKey(week) == dateKey(mondayOf(pantryToday))
-          ? pantryToday.weekday - 1 : 0;
+          ? pantryToday.weekday - 1
+          : 0;
       draft = null;
       editingPlan = false;
+      allowPlanRepeats = false;
+      deferredRecipes.clear();
+      plannerResult = null;
       swappingDay = null;
       selectedReplacement = null;
       acceptedDays.clear();
@@ -621,7 +727,10 @@ class _PlanningPageState extends State<PlanningPage> {
         });
       }
     }
-    if (mounted && previousSurveyStep > 0 && previousSurveyStep <= 5 && loadError == null) {
+    if (mounted &&
+        previousSurveyStep > 0 &&
+        previousSurveyStep <= 5 &&
+        loadError == null) {
       update(() => surveyStep = previousSurveyStep);
     }
   }
@@ -656,9 +765,39 @@ class _PlanningPageState extends State<PlanningPage> {
       ),
     );
     if (day == null || !mounted) return;
+    if (!matchesVerifiedRestrictions(recipe, diet, {
+          ...exclusions,
+          ...personalExclusions,
+        }) ||
+        planningDiners
+            .where((d) => d.participates)
+            .any((d) => !d.allows(recipe))) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Konflikt mit deinen festen Regeln'),
+          content: const Text(
+            'Dieses Rezept enthält ausgeschlossene Allergene, passt nicht zur Ernährungsweise oder hat keine verlässlich geprüften Angaben. Bitte prüfe die Zutaten und Produktkennzeichnung.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Abbrechen'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Bewusst selbst einplanen'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true || !mounted) return;
+    }
     final next = Map<int, PlannedMeal>.from(plan)
       ..[day] = PlannedMeal(recipe, portions ?? servings);
     if (!await saveMeals(next)) return;
+    selfChosenRecipes.add(recipe.id);
+    savePreferences();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${recipe.name} für ${days[day]} geplant')),

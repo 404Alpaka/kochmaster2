@@ -1,7 +1,7 @@
 part of 'planning_page.dart';
 
 extension _HouseholdViews on _PlanningPageState {
-  List<Widget> householdFlow() => widget.client != null && widget.user == null ? [title('Zusammen planen.'), gap(16), surveyCard('Mit deinem Konto verbinden', 'Melde dich an, um einen echten Haushalt zu erstellen oder eine Einladung anzunehmen.'), gap(16), primary('Anmelden oder registrieren', account)] : accountConnected && (householdPage < 7 || readOnlyShared) ? connectedHouseholdView() : switch (householdPage) {
+  List<Widget> householdFlow() => widget.client != null && widget.user == null ? [title('Zusammen planen.'), gap(16), surveyCard('Mit deinem Konto verbinden', 'Melde dich an, um einen echten Haushalt zu erstellen oder eine Einladung anzunehmen.'), gap(16), primary('Anmelden oder registrieren', account), gap(12), recipeAction('Essenspräferenzen', false, () => editFoodPreferences())] : accountConnected && (householdPage < 7 || readOnlyShared) ? connectedHouseholdView() : switch (householdPage) {
     1 => householdMembersView(), 2 => householdInviteView(), 3 => householdRoleView(),
     4 => householdLeaveView(), 5 => householdPreferencesView(), 6 => householdMealsView(),
     11 => weeklyReviewView(), 12 => weeklyReviewEditor(), 13 => weeklyReviewNextView(),

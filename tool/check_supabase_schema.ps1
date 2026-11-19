@@ -13,12 +13,15 @@ if (-not $ProjectUrl -or -not $PublishableKey) {
 if ($PublishableKey.StartsWith('sb_secret_')) { throw 'Nur einen öffentlichen Publishable-Key verwenden.' }
 $checks = @(
   @{ Name = 'Rezeptkatalog'; Path = 'recipes?select=image_url,categories,verified_allergens,verified_diets,deleted_at&limit=0'; Expected = 200 },
+  @{ Name = 'Planermerkmale'; Path = 'recipes?select=primary_side,dish_type,main_ingredient,active_minutes,preparation_method,flavors,cost_class&limit=0'; Expected = 200 },
   @{ Name = 'Zutatenverknüpfungen'; Path = 'recipe_ingredients?select=step_key&limit=0'; Expected = 200 },
   @{ Name = 'Private Wochenpläne'; Path = 'user_week_plans?select=meals,checked,revision&limit=0'; Expected = 401 },
   @{ Name = 'Kontodaten'; Path = 'user_preferences?select=data,revision&limit=0'; Expected = 401 },
   @{ Name = 'Kundenprofile'; Path = 'customer_profiles?select=customer_number,first_name,last_name&limit=0'; Expected = 401 },
   @{ Name = 'Haushaltspläne'; Path = 'household_week_plans?select=meals,checked,revision&limit=0'; Expected = 401 },
   @{ Name = 'Favoritenzahlen'; Path = 'rpc/recipe_popularity'; Expected = 200 },
+  @{ Name = 'Anonyme Haushaltsregeln gesperrt'; Path = 'rpc/save_household_state'; Expected = 401;
+     Body = '{"p_household":null,"p_data":{},"p_revision":0}' },
   @{ Name = 'Anonyme Planspeicherung gesperrt'; Path = 'rpc/save_user_week_plan'; Expected = 401;
      Body = '{"p_user":null,"p_week":"2026-11-16","p_meals":[],"p_checked":[],"p_revision":0}' }
 )

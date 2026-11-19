@@ -132,7 +132,7 @@ extension _RecipeDiscovery on _PlanningPageState {
   };
 
   List<Widget> recipeDiscoveryView() {
-    final filtered = recipes.where((recipe) {
+    final filtered = dinnerRecipes.where((recipe) {
       final search = query.trim().toLowerCase();
       final inStock = recipe.ingredients.any(
         (i) => pantry.any(
@@ -176,7 +176,8 @@ extension _RecipeDiscovery on _PlanningPageState {
           children: [
             for (final entry in <String, String>{
               'all': 'Alle',
-              ...recipeCategoryLabels,
+              for (final entry in recipeCategoryLabels.entries)
+                if (entry.key != 'breakfast') entry.key: entry.value,
             }.entries)
               Padding(
                 padding: const EdgeInsets.only(right: 12),
@@ -262,7 +263,7 @@ extension _RecipeDiscovery on _PlanningPageState {
       if (filtered.isEmpty)
         panel(
           Text(
-            recipes.isEmpty
+            dinnerRecipes.isEmpty
                 ? 'Noch keine veröffentlichten Rezepte vorhanden.'
                 : recipeFilter == 2
                 ? 'Noch keine Favoriten für diese Auswahl. Markiere ein Rezept mit „Favorit“.'
@@ -327,7 +328,10 @@ extension _RecipeDiscovery on _PlanningPageState {
         ),
       ],
       gap(18),
-      Text('${filtered.length} von ${recipes.length} Rezepten', style: muted),
+      Text(
+        '${filtered.length} von ${dinnerRecipes.length} Rezepten',
+        style: muted,
+      ),
     ];
   }
 }
