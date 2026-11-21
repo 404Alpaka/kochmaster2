@@ -62,7 +62,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.rows.toString(), original);
       expect(card, findsNothing);
-      final profile = find.byTooltip('Zum Haushalt');
+      final profile = find.byTooltip('Zum Profil');
       await reveal(tester, profile, delta: -200);
       await tester.tap(profile);
       await tester.pumpAndSettle();

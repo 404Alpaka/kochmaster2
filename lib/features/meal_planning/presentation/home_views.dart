@@ -188,7 +188,7 @@ extension _HomeViews on _PlanningPageState {
           ),
           const SizedBox(width: 12),
           IconButton.filledTonal(
-            tooltip: 'Zum Haushalt',
+            tooltip: 'Zum Profil',
             onPressed: openHomeHousehold,
             style: IconButton.styleFrom(
               backgroundColor: AppColors.softGreen,

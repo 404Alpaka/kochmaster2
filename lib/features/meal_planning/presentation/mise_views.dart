@@ -67,6 +67,7 @@ extension _MiseViews on _PlanningPageState {
       (cookingPage == 0 &&
           tab == 4 &&
           householdPage > 0 &&
+          householdPage < 14 &&
           (householdDemoJoined || householdPage >= 5));
 
   Widget miseScaffold() => Scaffold(
@@ -90,7 +91,7 @@ extension _MiseViews on _PlanningPageState {
             child: const Icon(Icons.add),
           )
         : null,
-    extendBody: false,
+    extendBody: !hasBottomAction,
     body: SafeArea(
       bottom: false,
       child: Center(
@@ -157,7 +158,8 @@ extension _MiseViews on _PlanningPageState {
                       if (tab != 0 &&
                           tab != 5 &&
                           !(tab == 2 && pantryPage == 0) &&
-                          !(tab == 3 && shoppingPage == 0))
+                          !(tab == 3 && shoppingPage == 0) &&
+                          !(tab == 4 && householdPage == 0))
                         storageStatus(),
                       if (saving) const LinearProgressIndicator(),
                       if (loadError != null) ...[
@@ -202,6 +204,7 @@ extension _MiseViews on _PlanningPageState {
               pantryActionBar(),
             if (tab == 4 &&
                 householdPage > 0 &&
+                householdPage < 14 &&
                 (householdDemoJoined || householdPage >= 5))
               householdActionBar(),
           ],

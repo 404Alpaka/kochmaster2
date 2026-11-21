@@ -78,9 +78,9 @@ void main() {
       expect(find.text('Hallo, Fabian!'), findsNothing);
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Zum Haushalt'));
+      await tester.tap(find.byTooltip('Zum Profil'));
       await tester.pumpAndSettle();
-      expect(find.text('Zusammen isst’s besser.'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(

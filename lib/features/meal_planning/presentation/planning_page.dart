@@ -40,6 +40,7 @@ import '../../shopping/domain/build_shopping_list.dart';
 
 part 'mise_views.dart';
 part 'home_views.dart';
+part 'profile_views.dart';
 part 'week_action_card.dart';
 part 'recipe_discovery_views.dart';
 part 'account_sync.dart';

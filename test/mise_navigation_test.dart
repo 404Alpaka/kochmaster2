@@ -34,11 +34,12 @@ void main() {
     expect(find.text('Tomaten'), findsOneWidget);
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Zum Haushalt'));
+    await tester.tap(find.byTooltip('Zum Profil'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Zusammen isst’s besser.'), findsOneWidget);
-    await tester.tap(find.text('Bearbeiten'));
+    expect(find.text('Profil'), findsOneWidget);
+    await reveal(tester, find.text('Budget'));
+    await tester.tap(find.text('Budget'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await tester.enterText(find.byType(TextFormField).at(0), '90');
@@ -46,7 +47,24 @@ void main() {
     await tester.tap(find.text('Speichern'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('20,00 € von 90,00 €'), findsOneWidget);
+    await tester.tap(find.text('Budget'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).at(0))
+          .controller!
+          .text,
+      '90,00',
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).at(1))
+          .controller!
+          .text,
+      '20,00',
+    );
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Korb'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

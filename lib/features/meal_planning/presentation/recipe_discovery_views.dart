@@ -121,10 +121,6 @@ extension _RecipeDiscovery on _PlanningPageState {
                 ),
                 initialValue: recipeFilter,
                 onSelected: (value) {
-                  if (value == 4) {
-                    showRecipeCollection();
-                    return;
-                  }
                   update(() => recipeFilter = value);
                 },
                 itemBuilder: (context) => [
@@ -133,7 +129,6 @@ extension _RecipeDiscovery on _PlanningPageState {
                     (1, 'Gemerkt', Icons.bookmark_border),
                     (2, 'Favoriten', Icons.favorite_border),
                     (3, 'Aus Vorrat', Icons.kitchen_outlined),
-                    (4, 'Meine Rezeptsammlung', Icons.menu_book_outlined),
                   ])
                     PopupMenuItem(
                       value: value,

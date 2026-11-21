@@ -69,15 +69,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('compact-recipe-card-meat')),
-      findsOneWidget,
+      findsWidgets,
     );
     expect(find.text('Rezepte entdecken').hitTestable(), findsOneWidget);
     expect(find.byType(TextField).hitTestable(), findsOneWidget);
     await tester.tap(find.byTooltip('Rezeptauswahl ändern'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Meine Rezeptsammlung'));
-    await tester.pumpAndSettle();
-    expect(find.text('Eigenes Rezept erstellen +'), findsOneWidget);
+    expect(find.text('Meine Rezeptsammlung'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

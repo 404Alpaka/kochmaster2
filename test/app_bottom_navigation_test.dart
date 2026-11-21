@@ -6,7 +6,7 @@ import 'package:kochmaster/features/meal_planning/presentation/app_bottom_naviga
 void main() {
   for (final width in [320.0, 390.0, 1280.0]) {
     testWidgets(
-      'Full-width navigation respects bottom inset and switches tabs at $width',
+      'Floating navigation respects bottom inset and switches tabs at $width',
       (tester) async {
         tester.view.physicalSize = Size(width, 900);
         tester.view.devicePixelRatio = 1;
@@ -35,9 +35,9 @@ void main() {
           ),
         );
         final surface = find.byKey(const ValueKey('bottom-navigation-surface'));
-        expect(tester.getRect(surface).bottom, 900);
-        expect(tester.getRect(surface).left, 0);
-        expect(tester.getRect(surface).right, width);
+        expect(tester.getRect(surface).bottom, 866);
+        expect(tester.getRect(surface).left, greaterThanOrEqualTo(12));
+        expect(tester.getRect(surface).right, lessThanOrEqualTo(width - 12));
         expect(
           tester.getRect(find.text('Start')).bottom,
           lessThanOrEqualTo(866),

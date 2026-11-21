@@ -297,7 +297,7 @@ void main() {
       await settleAccount(tester);
 
       expect(
-        find.byTooltip('Zum Haushalt'),
+        find.byTooltip('Zum Profil'),
         findsOneWidget,
         reason: tester
             .widgetList<Text>(find.byType(Text))
@@ -306,16 +306,20 @@ void main() {
       );
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Zum Haushalt'));
+      await tester.tap(find.byTooltip('Zum Profil'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Alex'), findsNothing);
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Familie Test').last);
+      await tester.tap(find.text('Gemeinsam'));
       await settleAccount(tester);
       await reveal(tester, find.text('Deine Rolle: Mitglied'));
       expect(find.text('Deine Rolle: Mitglied'), findsOneWidget);
+      await reveal(tester, find.text('Haushalt verwalten'));
+      await tester.tap(find.text('Haushalt verwalten'));
+      await tester.pumpAndSettle();
+      expect(find.text('Zusammen isst’s besser.'), findsOneWidget);
+      await tester.tap(find.text('Zurück zum Profil'));
+      await tester.pumpAndSettle();
+      expect(find.text('Profil'), findsOneWidget);
       expect(backend.documents[accountA]!['data']['pantry'], [
         {'name': 'Private stock'},
       ]);
@@ -352,7 +356,7 @@ void main() {
       expect(find.text('Nur ansehen'), findsOneWidget);
       expect(find.text('Wochenplan erstellen'), findsNothing);
       expect(
-        find.byTooltip('Zum Haushalt'),
+        find.byTooltip('Zum Profil'),
         findsNothing,
         reason: tester
             .widgetList<Text>(find.byType(Text))
@@ -361,10 +365,13 @@ void main() {
       );
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Zum Haushalt'));
+      await tester.tap(find.byTooltip('Zum Profil'));
       await tester.pumpAndSettle();
       await reveal(tester, find.text('Deine Rolle: Nur ansehen'));
       expect(find.text('Deine Rolle: Nur ansehen'), findsOneWidget);
+      await reveal(tester, find.text('Haushalt verwalten'));
+      await tester.tap(find.text('Haushalt verwalten'));
+      await tester.pumpAndSettle();
       expect(find.textContaining('Alex'), findsNothing);
       expect(find.text('Person einladen'), findsNothing);
       expect(backend.writes, isEmpty);

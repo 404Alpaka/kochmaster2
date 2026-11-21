@@ -32,7 +32,7 @@ void main() {
       await settleAccount(tester);
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Zum Haushalt'));
+      await tester.tap(find.byTooltip('Zum Profil'));
       await tester.pumpAndSettle();
       final open = find.text('Mitessende & feste Regeln');
       await reveal(tester, open);

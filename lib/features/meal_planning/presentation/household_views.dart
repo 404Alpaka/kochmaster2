@@ -1,13 +1,43 @@
 part of 'planning_page.dart';
 
 extension _HouseholdViews on _PlanningPageState {
-  List<Widget> householdFlow() => widget.client != null && widget.user == null ? [title('Zusammen planen.'), gap(16), surveyCard('Mit deinem Konto verbinden', 'Melde dich an, um einen echten Haushalt zu erstellen oder eine Einladung anzunehmen.'), gap(16), primary('Anmelden oder registrieren', account), gap(12), recipeAction('Essenspräferenzen', false, () => editFoodPreferences())] : accountConnected && (householdPage < 7 || readOnlyShared) ? connectedHouseholdView() : switch (householdPage) {
-    1 => householdMembersView(), 2 => householdInviteView(), 3 => householdRoleView(),
-    4 => householdLeaveView(), 5 => householdPreferencesView(), 6 => householdMealsView(),
-    11 => weeklyReviewView(), 12 => weeklyReviewEditor(), 13 => weeklyReviewNextView(),
-    7 => householdRulesView(), 8 => householdRuleEditor(), 9 => hiddenRecipesView(), 10 => dislikeEditorView(),
-    _ => householdView(),
-  };
+  List<Widget> householdFlow() {
+    if (householdPage == 0) return profileView();
+    if (householdPage == 14) {
+      return [
+        proposalBack('Zurück zum Profil', () => householdGo(0)),
+        gap(14),
+        ...connectedHouseholdView(),
+      ];
+    }
+    if (householdPage == 15) {
+      return [
+        proposalBack('Zurück zum Profil', () => householdGo(0)),
+        gap(14),
+        ...householdView(),
+      ];
+    }
+    if (accountConnected && (householdPage < 7 || readOnlyShared)) {
+      return connectedHouseholdView();
+    }
+    return switch (householdPage) {
+      1 => householdMembersView(),
+      2 => householdInviteView(),
+      3 => householdRoleView(),
+      4 => householdLeaveView(),
+      5 => householdPreferencesView(),
+      6 => householdMealsView(),
+      11 => weeklyReviewView(),
+      12 => weeklyReviewEditor(),
+      13 => weeklyReviewNextView(),
+      7 => householdRulesView(),
+      8 => householdRuleEditor(),
+      9 => hiddenRecipesView(),
+      10 => dislikeEditorView(),
+      _ => profileView(),
+    };
+  }
+
   void householdGo(int page) => update(() => householdPage = page);
   Widget householdBack([int page = 1, String label = 'Mitglieder']) => proposalBack(label, () => householdGo(page));
   bool get canLeaveHouseholdDemo => demoAlexRole == 'Verwaltung' && leaveConfirmed;
@@ -166,8 +196,8 @@ extension _HouseholdViews on _PlanningPageState {
     var newDiet = diet; var minutes = maxMinutes; var newBudget = planBudget; var validBudget = true;
     final confirmed = await showDialog<bool>(context: context, builder: (context) => StatefulBuilder(builder: (context, setDialog) => AlertDialog(
       title: const Text('Gemeinsame Planregeln'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        DropdownButtonFormField<String>(initialValue: newDiet, decoration: const InputDecoration(labelText: 'Ernährungsweise'), items: [for (final d in ['Ohne Einschränkung', 'Vegetarisch', 'Vegan']) DropdownMenuItem(value: d, child: Text(d))], onChanged: (v) => newDiet = v!), gap(12),
-        DropdownButtonFormField<int>(initialValue: minutes, decoration: const InputDecoration(labelText: 'Kochzeit'), items: [for (final m in [15, 30, 45, 0]) DropdownMenuItem(value: m, child: Text(m == 0 ? 'Flexibel' : 'Bis $m Minuten'))], onChanged: (v) => minutes = v!), gap(12),
+        DropdownButtonFormField<String>(isExpanded: true, initialValue: newDiet, decoration: const InputDecoration(labelText: 'Ernährungsweise'), items: [for (final d in ['Ohne Einschränkung', 'Vegetarisch', 'Vegan']) DropdownMenuItem(value: d, child: Text(d, maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: (v) => newDiet = v!), gap(12),
+        DropdownButtonFormField<int>(isExpanded: true, initialValue: minutes, decoration: const InputDecoration(labelText: 'Kochzeit'), items: [for (final m in [15, 30, 45, 0]) DropdownMenuItem(value: m, child: Text(m == 0 ? 'Flexibel' : 'Bis $m Minuten', maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: (v) => minutes = v!), gap(12),
         TextFormField(initialValue: newBudget?.toStringAsFixed(2) ?? '', decoration: const InputDecoration(labelText: 'Planbudget · leer = kein Limit'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (v) { newBudget = v.trim().isEmpty ? null : double.tryParse(v.replaceAll(',', '.')); setDialog(() => validBudget = v.trim().isEmpty || (newBudget != null && newBudget!.isFinite && newBudget! > 0)); }),
       ])), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')), TextButton(onPressed: () { if (validBudget) Navigator.pop(context, true); }, child: const Text('Speichern'))],
     )));
@@ -175,6 +205,7 @@ extension _HouseholdViews on _PlanningPageState {
   }
 
   Widget householdActionBar() {
+    if (householdPage >= 14) return const SizedBox.shrink();
     if(widget.client != null && widget.user == null) return const SizedBox.shrink();
     if(accountConnected && (householdPage < 7 || readOnlyShared)) return const SizedBox.shrink();
     if (householdPage >= 11) return weeklyReviewActionBar();
