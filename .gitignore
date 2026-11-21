@@ -51,3 +51,6 @@ app.*.map.json
 .env
 .env.*
 
+
+# Private receipt inspection files
+/tmp/pdfs/

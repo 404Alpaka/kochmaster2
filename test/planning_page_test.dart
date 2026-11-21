@@ -61,10 +61,15 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Tomaten-Spinat');
       await tester.pumpAndSettle();
-      await reveal(tester, find.text('Mehr'));
+      await reveal(
+        tester,
+        find.byTooltip('Rezeptaktionen für Tomaten-Spinat-Pasta'),
+      );
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Mehr'));
+      await tester.tap(
+        find.byTooltip('Rezeptaktionen für Tomaten-Spinat-Pasta'),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Zum Wochenplan hinzufügen'));
       await tester.pumpAndSettle();
@@ -155,10 +160,15 @@ void main() {
     },
   );
 
-  testWidgets('Versionskonflikt sperrt Speichern bis zum Neuladen', (tester) async {
+  testWidgets('Versionskonflikt sperrt Speichern bis zum Neuladen', (
+    tester,
+  ) async {
     final store = MemoryWeekStore();
     final week = mondayOf(DateTime.now());
-    await store.save(week, WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}));
+    await store.save(
+      week,
+      WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}),
+    );
     await tester.pumpWidget(app(store));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Korb'));
@@ -178,7 +188,11 @@ void main() {
     await tester.tap(tomato);
     await tester.pumpAndSettle();
     expect(store.saveCalls, calls);
-    await reveal(tester, find.byTooltip('Gespeicherten Wochenplan neu laden'), delta: -150);
+    await reveal(
+      tester,
+      find.byTooltip('Gespeicherten Wochenplan neu laden'),
+      delta: -150,
+    );
     expect(find.textContaining('Dieser Wochenplan wurde'), findsOneWidget);
     // Simulate the newer state saved by the other tab.
     store.rows[dateKey(week)] = WeeklyPlan(
@@ -194,35 +208,45 @@ void main() {
     expect((store.rows[dateKey(week)]!['meals'] as List).single['servings'], 3);
   });
 
-  testWidgets('Verlorene Speicherantwort verlangt Neuladen statt erneutem Überschreiben', (tester) async {
-    final store = LostResponseWeekStore();
-    await store.save(mondayOf(DateTime.now()), WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}));
-    await tester.pumpWidget(app(store));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Korb'));
-    await tester.pumpAndSettle();
-    if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Selbst einkaufen').last);
+  testWidgets(
+    'Verlorene Speicherantwort verlangt Neuladen statt erneutem Überschreiben',
+    (tester) async {
+      final store = LostResponseWeekStore();
+      await store.save(
+        mondayOf(DateTime.now()),
+        WeeklyPlan(meals: {0: PlannedMeal(recipes.first, 2)}),
+      );
+      await tester.pumpWidget(app(store));
       await tester.pumpAndSettle();
-    }
-    final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
-    await reveal(tester, tomato);
-    store.loseResponse = true;
-    await tester.tap(tomato);
-    await tester.pumpAndSettle();
-    expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
-    expect(store.rows.values.single['checked'], isNotEmpty);
-    final calls = store.saveCalls;
-    await tester.tap(tomato);
-    await tester.pumpAndSettle();
-    expect(store.saveCalls, calls);
-    await reveal(tester, find.byTooltip('Gespeicherten Wochenplan neu laden'), delta: -150);
-    expect(find.text('Speicherstand unklar'), findsOneWidget);
-    await tester.tap(find.byTooltip('Gespeicherten Wochenplan neu laden'));
-    await tester.pumpAndSettle();
-    await reveal(tester, tomato);
-    expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
-  });
+      await tester.tap(find.text('Korb'));
+      await tester.pumpAndSettle();
+      if (find.text('Selbst einkaufen').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Selbst einkaufen').last);
+        await tester.pumpAndSettle();
+      }
+      final tomato = find.widgetWithText(CheckboxListTile, 'Tomaten');
+      await reveal(tester, tomato);
+      store.loseResponse = true;
+      await tester.tap(tomato);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(tomato).value, isFalse);
+      expect(store.rows.values.single['checked'], isNotEmpty);
+      final calls = store.saveCalls;
+      await tester.tap(tomato);
+      await tester.pumpAndSettle();
+      expect(store.saveCalls, calls);
+      await reveal(
+        tester,
+        find.byTooltip('Gespeicherten Wochenplan neu laden'),
+        delta: -150,
+      );
+      expect(find.text('Speicherstand unklar'), findsOneWidget);
+      await tester.tap(find.byTooltip('Gespeicherten Wochenplan neu laden'));
+      await tester.pumpAndSettle();
+      await reveal(tester, tomato);
+      expect(tester.widget<CheckboxListTile>(tomato).value, isTrue);
+    },
+  );
 
   test('Unveränderte Einkaufspositionen bleiben beim Planen erledigt', () {
     final before = [PlannedMeal(recipes[0], 2)];

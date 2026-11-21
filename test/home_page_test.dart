@@ -54,6 +54,10 @@ void main() {
       expect(find.text('Hallo, Fabian!'), findsOneWidget);
       expect(find.text('Wochenplan'), findsOneWidget);
       expect(find.text('Kochen starten'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Kochen starten')).dy,
+        greaterThan(tester.getBottomLeft(find.text('Wochenplan')).dy),
+      );
       expect(tester.takeException(), isNull);
       if (width == 390 && const bool.fromEnvironment('CAPTURE_DESIGN')) {
         await tester.runAsync(() async {
@@ -92,8 +96,11 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Jetzt kochen'), findsOneWidget);
       expect(find.text('Nicht mehr vorschlagen'), findsNothing);
       expect(find.widgetWithText(TextButton, 'Ausblenden'), findsOneWidget);
-      await tester.scrollUntilVisible(find.byTooltip('Mehr Portionen'), 160,
-        scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.byTooltip('Mehr Portionen'),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.byTooltip('Mehr Portionen'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

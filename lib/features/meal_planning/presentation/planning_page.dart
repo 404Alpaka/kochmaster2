@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' as ui;
+
+import 'package:crypto/crypto.dart' show sha256;
 
 import '../../auth/data/session_storage.dart';
 
@@ -9,6 +10,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import 'app_bottom_navigation.dart';
 import 'food_preferences_page.dart';
+import 'recipe_category_icon.dart';
 
 import '../../recipes/data/admin_recipe_repository.dart';
 import '../../recipes/data/supabase_recipe_repository.dart';
@@ -19,6 +21,8 @@ import 'package:supabase/supabase.dart';
 
 import '../../auth/presentation/account_page.dart';
 import '../data/weekly_plan_repository.dart';
+import '../data/receipt_reader.dart';
+import '../domain/receipt_parser.dart';
 import '../domain/meal_plan.dart';
 import '../domain/weekly_planner.dart';
 import '../domain/planning_resources.dart';
@@ -44,6 +48,7 @@ part 'planning_budget_demo.dart';
 part 'planning_proposal.dart';
 part 'shopping_views.dart';
 part 'pantry_views.dart';
+part 'receipt_import_views.dart';
 part 'household_views.dart';
 part 'household_rules.dart';
 part 'cooking_views.dart';
@@ -124,6 +129,9 @@ class _PlanningPageState extends State<PlanningPage> {
   int tab = 5;
   int shoppingPage = 0;
   int selectedMarket = 0;
+  bool shoppingExample = false;
+  bool basketDelivery = false;
+  final demoShoppingChecked = <String>{};
   bool showAllDemoProducts = false;
   bool includeOatDrink = true;
   String deliveryAddress = 'Zuhause · 10115 Berlin';
@@ -161,6 +169,7 @@ class _PlanningPageState extends State<PlanningPage> {
 
   String query = '';
   int recipeFilter = 0;
+  final recipeCategoryAnchor = GlobalKey();
   final rememberedRecipes = <String>{};
   final favoriteRecipes = <String>{};
   final hiddenRecipes = <String>{};
@@ -224,6 +233,10 @@ class _PlanningPageState extends State<PlanningPage> {
   int pantryPage = 0;
   List<Map<String, dynamic>> receiptDraft = [];
   bool receiptResolved = false;
+  bool receiptIsDemo = true;
+  String receiptSource = 'Beispiel-Bon';
+  String? receiptFingerprint;
+  final importedReceiptIds = <String>{};
   bool showAllReceiptItems = false;
   int leftoverRecipeIndex = 0;
   List<Map<String, dynamic>> pantry = [];
@@ -294,6 +307,7 @@ class _PlanningPageState extends State<PlanningPage> {
     'personalExclusions': personalExclusions.toList(),
     'personalDislikes': personalDislikes.toList(),
     'pantry': pantry,
+    'importedReceiptIds': importedReceiptIds.toList(),
     'personalRecipes': personalRecipes,
     'cookedEntries': cookedEntries.toList(),
     'preparedMeals': preparedMeals,
@@ -461,6 +475,9 @@ class _PlanningPageState extends State<PlanningPage> {
         (r) => Map<String, dynamic>.from(r as Map),
       ),
     );
+    importedReceiptIds
+      ..clear()
+      ..addAll(List<String>.from(data['importedReceiptIds'] as List? ?? []));
     pantry = (data['pantry'] as List? ?? [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();

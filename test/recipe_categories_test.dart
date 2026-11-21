@@ -59,7 +59,7 @@ void main() {
     );
     await tester.tap(find.text('Rezepte'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Meine Rezeptsammlung'), findsOneWidget);
+    expect(find.byTooltip('Rezeptauswahl ändern'), findsOneWidget);
     await tester.tap(find.text('Fleisch'));
     await tester.pumpAndSettle();
     expect(find.text('Suchergebnisse'), findsOneWidget);
@@ -67,25 +67,61 @@ void main() {
     expect(find.text('Grüner Salat'), findsNothing);
     await tester.tap(find.text('Zurücksetzen'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('7 Favoriten · 20 Min.'),
-      180,
-      scrollable: find
-          .descendant(
-            of: find.byType(ListView),
-            matching: find.byType(Scrollable),
-          )
-          .first,
+    expect(
+      find.byKey(const ValueKey('compact-recipe-card-meat')),
+      findsOneWidget,
     );
-    expect(find.text('7 Favoriten · 20 Min.'), findsOneWidget);
     expect(find.text('Rezepte entdecken').hitTestable(), findsOneWidget);
     expect(find.byType(TextField).hitTestable(), findsOneWidget);
-    await tester.tap(find.byTooltip('Meine Rezeptsammlung'));
+    await tester.tap(find.byTooltip('Rezeptauswahl ändern'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Meine Rezeptsammlung'));
     await tester.pumpAndSettle();
     expect(find.text('Eigenes Rezept erstellen +'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets(
+    'Kategorien durchsuchen und vegetarisch inklusive vegan filtern',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PlanningPage(isDemo: true, recipes: const [meat, salad]),
+        ),
+      );
+      await tester.tap(find.text('Rezepte'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Kategorien durchsuchen'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ChoiceChip, 'Soßen & Dips'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Kategorie suchen'),
+        've',
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ChoiceChip), findsNWidgets(2));
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Vegetarisch'));
+      await tester.pumpAndSettle();
+      expect(find.text('Suchergebnisse'), findsOneWidget);
+      expect(find.text('Grüner Salat'), findsOneWidget);
+      expect(find.text('Fleischgericht'), findsNothing);
+      await tester.tap(find.byTooltip('Kategorien durchsuchen'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Kategorie suchen'),
+        'unbekannt',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Keine Kategorie gefunden.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   testWidgets('Editor lädt Kategorien und speichert Änderungen', (
     tester,
   ) async {

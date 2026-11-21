@@ -68,7 +68,12 @@ void main() {
       final transport = MockClient((request) async {
         requests.add(request.url);
         if (request.url.path.endsWith('/recipe_popularity')) {
-          return http.Response('[]', 200, request: request, headers: {'content-type': 'application/json'});
+          return http.Response(
+            '[]',
+            200,
+            request: request,
+            headers: {'content-type': 'application/json'},
+          );
         }
         final select = request.url.queryParameters['select']!;
         if (select.contains('step_key') ||
@@ -136,6 +141,6 @@ void main() {
 
     await reveal(tester, find.text('Tomaten-Spinat-Pasta'));
     expect(find.text('Tomaten-Spinat-Pasta'), findsOneWidget);
-    expect(find.byTooltip('Meine Rezeptsammlung'), findsOneWidget);
+    expect(find.byTooltip('Rezeptauswahl ändern'), findsOneWidget);
   });
 }

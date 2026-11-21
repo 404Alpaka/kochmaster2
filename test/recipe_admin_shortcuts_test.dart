@@ -83,7 +83,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Reis');
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Mehr'),
+      find.byTooltip('Rezeptaktionen für Reis'),
       150,
       scrollable: find
           .descendant(
@@ -93,7 +93,7 @@ void main() {
           .first,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mehr'));
+    await tester.tap(find.byTooltip('Rezeptaktionen für Reis'));
     await tester.pumpAndSettle();
   }
 
@@ -178,9 +178,13 @@ void main() {
           .first,
     );
     await tester.pumpAndSettle();
-    final cards = find.ancestor(
-      of: find.widgetWithText(TextButton, 'Aktionen'),
-      matching: find.byType(Card),
+    final cards = find.byWidgetPredicate(
+      (widget) =>
+          widget is Card &&
+          widget.key is ValueKey<String> &&
+          ((widget.key as ValueKey<String>).value.startsWith(
+            'compact-recipe-card-',
+          )),
     );
     expect(cards.evaluate().length, greaterThanOrEqualTo(2));
     final height = tester.getSize(cards.first).height;

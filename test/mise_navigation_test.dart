@@ -22,7 +22,8 @@ void main() {
     await tester.tap(find.text('Vorrat'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Lebensmittel erfassen'));
+    await reveal(tester, find.text('Manuell hinzufügen'));
+    await tester.tap(find.text('Manuell hinzufügen'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await tester.enterText(find.byType(TextFormField).at(0), 'Tomaten');
@@ -32,8 +33,8 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Tomaten'), findsOneWidget);
     await tester.tap(find.text('Start'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Zum Haushalt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Zum Haushalt'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Zusammen isst’s besser.'), findsOneWidget);
@@ -49,7 +50,7 @@ void main() {
     await tester.tap(find.text('Korb'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Dein smarter Einkauf'), findsOneWidget);
+    expect(find.text('Dein Einkauf'), findsOneWidget);
     await tester.tap(find.text('Plan'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

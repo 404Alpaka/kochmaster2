@@ -11,9 +11,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Tomaten-Spinat');
     await tester.pumpAndSettle();
-    await reveal(tester, find.text('Mehr'));
+    await reveal(
+      tester,
+      find.byTooltip('Rezeptaktionen für Tomaten-Spinat-Pasta'),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mehr'));
+    await tester.tap(find.byTooltip('Rezeptaktionen für Tomaten-Spinat-Pasta'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Zum Wochenplan hinzufügen'));
     await tester.pumpAndSettle();

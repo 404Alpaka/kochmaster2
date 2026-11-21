@@ -52,9 +52,14 @@ class RecipeImage extends StatelessWidget {
               ),
               if (height >= 90) ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Noch kein Rezeptbild',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                const Flexible(
+                  child: Text(
+                    'Noch kein Rezeptbild',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
                 ),
               ],
             ],
@@ -74,7 +79,15 @@ class RecipeImage extends StatelessWidget {
               Icon(Icons.broken_image_outlined, size: height < 90 ? 26 : 36),
               if (height >= 90) ...[
                 const SizedBox(height: 8),
-                const Text('Bild nicht verfügbar'),
+                const Flexible(
+                  child: Text(
+                    'Bild nicht verfügbar',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
               ],
             ],
           ),

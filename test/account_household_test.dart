@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'scroll_helpers.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:http/http.dart' as http;
@@ -312,6 +314,7 @@ void main() {
 
       await tester.tap(find.text('Familie Test').last);
       await settleAccount(tester);
+      await reveal(tester, find.text('Deine Rolle: Mitglied'));
       expect(find.text('Deine Rolle: Mitglied'), findsOneWidget);
       expect(backend.documents[accountA]!['data']['pantry'], [
         {'name': 'Private stock'},
@@ -360,6 +363,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Zum Haushalt'));
       await tester.pumpAndSettle();
+      await reveal(tester, find.text('Deine Rolle: Nur ansehen'));
       expect(find.text('Deine Rolle: Nur ansehen'), findsOneWidget);
       expect(find.textContaining('Alex'), findsNothing);
       expect(find.text('Person einladen'), findsNothing);

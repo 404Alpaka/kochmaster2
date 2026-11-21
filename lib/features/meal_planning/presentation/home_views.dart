@@ -171,10 +171,18 @@ extension _HomeViews on _PlanningPageState {
               children: [
                 Text(
                   firstName.isEmpty ? 'Hallo!' : 'Hallo, $firstName!',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.8,
+                  ),
                 ),
                 gap(5),
-                Text('Schön, dass du da bist.', style: muted),
+                Text(
+                  'Schön, dass du da bist.',
+                  style: muted.copyWith(fontSize: 15),
+                ),
               ],
             ),
           ),
@@ -198,52 +206,16 @@ extension _HomeViews on _PlanningPageState {
         style: Theme.of(context).textTheme.titleLarge,
       ),
       gap(14),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = (constraints.maxWidth - 14) / 2;
-              return IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: homeShortcut(
-                        title: 'Wochenplan',
-                        subtitle: '${plan.length} von 7 Tagen geplant',
-                        icon: Icons.calendar_month_outlined,
-                        color: AppColors.softGreen,
-                        size: width,
-                        onTap: () => selectTab(1),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: homeShortcut(
-                        title: 'Kochen starten',
-                        subtitle:
-                            todayMeal?.recipe.name ??
-                            (dateKey(week) == dateKey(mondayOf(today))
-                                ? 'Heute noch nichts geplant'
-                                : 'Heutigen Plan öffnen'),
-                        icon: Icons.restaurant_outlined,
-                        recipe: todayMeal?.recipe,
-                        color: AppColors.cream,
-                        size: width,
-                        onTap: openTodayCooking,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
+      homePlanCard(),
+      gap(12),
+      homeCookingCard(
+        todayMeal?.recipe,
+        todayMeal?.recipe.name ??
+            (dateKey(week) == dateKey(mondayOf(today))
+                ? 'Heute noch nichts geplant'
+                : 'Heutigen Plan öffnen'),
       ),
-      gap(28),
-      if (!surveyCompleted) ...[foodPreferencesCard(), gap(28)],
+      gap(24),
       section(
         'Dein Rezept des Tages',
         action: TextButton(
@@ -252,7 +224,7 @@ extension _HomeViews on _PlanningPageState {
         ),
       ),
       if (suggestion != null)
-        recipeCard(suggestion, featured: true)
+        homeRecipeCard(suggestion)
       else
         panel(
           Text(
@@ -261,6 +233,7 @@ extension _HomeViews on _PlanningPageState {
           ),
         ),
       gap(28),
+      if (!surveyCompleted) ...[foodPreferencesCard(), gap(28)],
       section('Für deine Woche'),
       if (candidates.length > 1) ...[
         for (final recipe
@@ -315,49 +288,233 @@ extension _HomeViews on _PlanningPageState {
     ];
   }
 
-  Widget homeShortcut({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required double size,
-    required VoidCallback onTap,
-    Recipe? recipe,
-  }) => ConstrainedBox(
-    constraints: BoxConstraints(minHeight: size),
-    child: Material(
-      color: color,
-      borderRadius: BorderRadius.circular(24),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (recipe != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: recipePhoto(recipe, height: 64),
-                )
-              else
-                Icon(icon, size: 36, color: AppColors.sage),
-              gap(22),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  static const _homeGreen = Color(0xFF193F35);
+
+  Widget homePlanCard() => Material(
+    color: _homeGreen,
+    borderRadius: BorderRadius.circular(24),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () => selectTab(1),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(15),
               ),
-              gap(5),
-              Text(subtitle, style: muted),
-            ],
-          ),
+              child: const Icon(
+                Icons.event_available_outlined,
+                color: Color(0xFFDCE8AF),
+                size: 27,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Wochenplan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${plan.length} / 7',
+                        style: const TextStyle(
+                          color: Color(0xFFDCE8AF),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  gap(8),
+                  Text(
+                    '${plan.length} von 7 Tagen geplant',
+                    style: const TextStyle(
+                      color: Color(0xFFBDCDC4),
+                      fontSize: 14,
+                    ),
+                  ),
+                  gap(9),
+                  Row(
+                    children: [
+                      for (var day = 0; day < 7; day++) ...[
+                        if (day > 0) const SizedBox(width: 4),
+                        Expanded(
+                          child: Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: plan.containsKey(day)
+                                  ? const Color(0xFFDCE8AF)
+                                  : Colors.white.withValues(alpha: .22),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
+    ),
+  );
+
+  Widget homeCookingCard(Recipe? recipe, String subtitle) => Material(
+    color: Theme.of(context).brightness == Brightness.dark
+        ? AppColors.darkSurface
+        : const Color(0xFFF0EEDF),
+    borderRadius: BorderRadius.circular(24),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: openTodayCooking,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 88,
+                height: 88,
+                child: recipe != null
+                    ? recipePhoto(recipe, height: 88)
+                    : const ColoredBox(
+                        color: AppColors.softGreen,
+                        child: Icon(
+                          Icons.restaurant_outlined,
+                          color: _homeGreen,
+                          size: 32,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kochen starten',
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+                  ),
+                  gap(5),
+                  Text(subtitle, style: muted.copyWith(fontSize: 14)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: _homeGreen),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget homeRecipeCard(Recipe recipe) => Card(
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(24),
+      side: BorderSide(
+        color: Theme.of(context).dividerColor.withValues(alpha: .15),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Stack(
+          children: [
+            Tooltip(
+              message: 'Rezept ansehen',
+              child: InkWell(
+                onTap: () => details(recipe),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => recipePhoto(
+                    recipe,
+                    height: (constraints.maxWidth * .65).clamp(180, 360),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(top: 14, right: 14, child: recipeHeartButton(recipe)),
+          ],
+        ),
+        InkWell(
+          onTap: () => details(recipe),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 17, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'FRISCH AUF DEINEN TELLER',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF63734D),
+                  ),
+                ),
+                gap(9),
+                Text(
+                  recipe.name,
+                  style: const TextStyle(
+                    fontSize: 27,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                gap(10),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 6,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.schedule,
+                          size: 16,
+                          color: AppColors.muted,
+                        ),
+                        const SizedBox(width: 7),
+                        Text('${recipe.minutes} Min.', style: muted),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.people_outline,
+                          size: 17,
+                          color: AppColors.muted,
+                        ),
+                        const SizedBox(width: 7),
+                        Text('${recipe.servings} Portionen', style: muted),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     ),
   );
 

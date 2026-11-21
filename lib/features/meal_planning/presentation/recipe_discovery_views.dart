@@ -6,106 +6,154 @@ extension _RecipeDiscovery on _PlanningPageState {
       collectionPage == 0 &&
       openedRecipe == null &&
       cookingPage == 0;
-  double get recipeHeaderHeight {
-    final width = MediaQuery.sizeOf(context).width.clamp(0, 1100).toDouble();
-    final painter = TextPainter(
-      text: TextSpan(
-        text: 'Rezepte entdecken',
-        style: Theme.of(context).textTheme.headlineMedium
-            ?.copyWith(fontSize: 25),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-    )..layout(maxWidth: (width - 98).clamp(1, 1100).toDouble());
-    final titleHeight = painter.height < 46 ? 46.0 : painter.height;
-    painter.dispose();
-    return 20 +
-        titleHeight +
-        8 +
-        MediaQuery.textScalerOf(context).scale(16) * 1.5 +
-        32;
-  }
-
-  Widget recipePinnedHeader() => ClipRect(
-    child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Container(
-        height: recipeHeaderHeight,
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 4),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.lightBackground.withValues(alpha: .86),
-              AppColors.lightBackground.withValues(alpha: .66),
-              AppColors.lightBackground.withValues(alpha: .55),
-            ],
-          ),
+  Widget recipePinnedHeader() => Container(
+    padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
+    color: Theme.of(context).scaffoldBackgroundColor,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Rezepte entdecken',
+          style: Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(fontSize: 25),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Rezepte entdecken',
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(fontSize: 25),
+        gap(12),
+        TextField(
+          controller: searchController,
+          decoration: InputDecoration(
+            hintText: 'Rezept oder Zutat suchen',
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surface,
+            prefixIcon: const Icon(Icons.search_rounded, size: 21),
+            suffixIcon: query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Suche löschen',
+                    onPressed: () => update(() {
+                      query = '';
+                      searchController.clear();
+                    }),
+                    icon: const Icon(Icons.close),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  tooltip: 'Meine Rezeptsammlung',
-                  onPressed: showRecipeCollection,
-                  icon: const Icon(Icons.favorite_border),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.softGreen,
-                    foregroundColor: AppColors.sage,
-                    fixedSize: const Size(46, 46),
-                  ),
-                ),
-              ],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
             ),
-            gap(8),
-            TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Rezept oder Zutat suchen',
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: .88),
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Suche löschen',
-                        onPressed: () => update(() {
-                          query = '';
-                          searchController.clear();
-                        }),
-                        icon: const Icon(Icons.close),
-                      ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 16,
-                ),
-              ),
-              onChanged: (value) => update(() => query = value),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 13,
+            ),
+          ),
+          onChanged: (value) => update(() => query = value),
+        ),
+      ],
+    ),
+  );
+
+  Widget recipeDiscoveryControls() {
+    final colors = Theme.of(context).colorScheme;
+    Widget action(String tooltip, IconData icon, VoidCallback? onPressed) =>
+        Material(
+          color: colors.primaryContainer,
+          elevation: 3,
+          shadowColor: Colors.black.withValues(alpha: .18),
+          shape: const CircleBorder(),
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            color: colors.primary,
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            icon: Icon(icon, size: 25),
+          ),
+        );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            action(
+              admin ? 'Rezept erstellen' : 'Eigenes Rezept erstellen',
+              Icons.add,
+              admin
+                  ? (adminActionBusy ? null : () => adminRecipeAction('create'))
+                  : () => editPersonalRecipe(),
             ),
           ],
         ),
-      ),
-    ),
-  );
+        const SizedBox(height: 12),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            action(
+              'Rezept importieren',
+              Icons.file_download_outlined,
+              () => update(() {
+                collectionPage = 3;
+                personalRecipeError = null;
+              }),
+            ),
+            const SizedBox(width: 12),
+            Material(
+              color: colors.primaryContainer,
+              elevation: 3,
+              shadowColor: Colors.black.withValues(alpha: .18),
+              shape: const CircleBorder(),
+              child: PopupMenuButton<int>(
+                tooltip: 'Rezeptauswahl ändern',
+                icon: Icon(
+                  recipeFilter == 0 ? Icons.favorite_border : Icons.favorite,
+                  color: colors.primary,
+                  size: 25,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 240),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(48, 48),
+                  shape: const CircleBorder(),
+                ),
+                initialValue: recipeFilter,
+                onSelected: (value) {
+                  if (value == 4) {
+                    showRecipeCollection();
+                    return;
+                  }
+                  update(() => recipeFilter = value);
+                },
+                itemBuilder: (context) => [
+                  for (final (value, label, icon) in [
+                    (0, 'Alle Rezepte', Icons.restaurant_outlined),
+                    (1, 'Gemerkt', Icons.bookmark_border),
+                    (2, 'Favoriten', Icons.favorite_border),
+                    (3, 'Aus Vorrat', Icons.kitchen_outlined),
+                    (4, 'Meine Rezeptsammlung', Icons.menu_book_outlined),
+                  ])
+                    PopupMenuItem(
+                      value: value,
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(label)),
+                          if (recipeFilter == value)
+                            const Icon(Icons.check, size: 18),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   IconData categoryIcon(String key) => switch (key) {
     'meat' => Icons.outdoor_grill_outlined,
@@ -130,6 +178,175 @@ extension _RecipeDiscovery on _PlanningPageState {
     'sauce' => Icons.tapas_outlined,
     _ => Icons.bakery_dining_outlined,
   };
+
+  Map<String, String> get discoveryCategories => {
+    'all': 'Alle',
+    for (final entry in recipeCategoryLabels.entries)
+      if (entry.key != 'breakfast') entry.key: entry.value,
+  };
+
+  Color categoryAccent(String key) => switch (key) {
+    'meat' || 'grilling' => const Color(0xFF9B614E),
+    'fish' => const Color(0xFF467A87),
+    'vegetarian' || 'vegan' || 'salad' => const Color(0xFF547B4C),
+    'dessert' || 'cake' || 'baking' => const Color(0xFF9A6A7D),
+    'pasta' || 'rice' || 'potato' || 'bread' => const Color(0xFFA1783E),
+    _ => AppColors.sage,
+  };
+
+  Widget recipeCategoryTile(String key, String label) {
+    final selected = key == 'favorites'
+        ? recipeFilter == 2 && recipeCategory == null
+        : recipeFilter == 0 && (recipeCategory ?? 'all') == key;
+    final colors = Theme.of(context).colorScheme;
+    void select() => update(() {
+      recipeFilter = key == 'favorites' ? 2 : 0;
+      recipeCategory =
+          key == 'favorites' || key == 'all' || recipeCategory == key
+          ? null
+          : key;
+    });
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      onTap: select,
+      child: Material(
+        key: selected ? recipeCategoryAnchor : null,
+        color: selected ? AppColors.sage : colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: selected
+                ? AppColors.sage
+                : colors.outlineVariant.withValues(alpha: .6),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: select,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? Colors.white : colors.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> showRecipeCategories() async {
+    var categorySearch = '';
+    final selection = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              22,
+              8,
+              22,
+              22 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: SizedBox(
+              height: (MediaQuery.sizeOf(context).height * .65).clamp(200, 600),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Was möchtest du kochen?',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Kategorien schließen',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  gap(14),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Kategorie suchen',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) => setSheetState(
+                      () => categorySearch = value.trim().toLowerCase(),
+                    ),
+                  ),
+                  gap(18),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final entry in discoveryCategories.entries.where(
+                            (entry) => entry.value.toLowerCase().contains(
+                              categorySearch,
+                            ),
+                          ))
+                            ChoiceChip(
+                              avatar: RecipeCategoryIcon(
+                                entry.key,
+                                color: (recipeCategory ?? 'all') == entry.key
+                                    ? Theme.of(context).colorScheme.primary
+                                    : categoryAccent(entry.key),
+                                size: 22,
+                                fallback: categoryIcon(entry.key),
+                              ),
+                              label: Text(entry.value),
+                              selected: (recipeCategory ?? 'all') == entry.key,
+                              showCheckmark: false,
+                              onSelected: (_) =>
+                                  Navigator.pop(context, entry.key),
+                            ),
+                          if (!discoveryCategories.values.any(
+                            (value) =>
+                                value.toLowerCase().contains(categorySearch),
+                          ))
+                            Text('Keine Kategorie gefunden.', style: muted),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (selection != null && mounted) {
+      update(() {
+        recipeFilter = 0;
+        recipeCategory = selection == 'all' ? null : selection;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final anchor = recipeCategoryAnchor.currentContext;
+        if (mounted && anchor != null) {
+          Scrollable.ensureVisible(
+            anchor,
+            alignment: .5,
+            duration: const Duration(milliseconds: 180),
+          );
+        }
+      });
+    }
+  }
 
   List<Widget> recipeDiscoveryView() {
     final filtered = dinnerRecipes.where((recipe) {
@@ -170,84 +387,44 @@ extension _RecipeDiscovery on _PlanningPageState {
         return value == 0 ? a.name.compareTo(b.name) : value;
       });
     return [
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final entry in <String, String>{
-              'all': 'Alle',
-              for (final entry in recipeCategoryLabels.entries)
-                if (entry.key != 'breakfast') entry.key: entry.value,
-            }.entries)
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: SizedBox(
-                  width: 78,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () => update(
-                      () => recipeCategory =
-                          entry.key == 'all' || recipeCategory == entry.key
-                          ? null
-                          : entry.key,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 25,
-                            backgroundColor:
-                                (recipeCategory ?? 'all') == entry.key
-                                ? AppColors.sage
-                                : AppColors.softGreen,
-                            child: Icon(
-                              entry.key == 'all'
-                                  ? Icons.apps_rounded
-                                  : categoryIcon(entry.key),
-                              color: (recipeCategory ?? 'all') == entry.key
-                                  ? Colors.white
-                                  : AppColors.sage,
-                            ),
-                          ),
-                          gap(8),
-                          Text(
-                            entry.value,
-                            maxLines: 1,
-                            style: muted.copyWith(fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      gap(14),
-      Wrap(
-        spacing: 8,
-        runSpacing: 6,
+      Row(
         children: [
-          for (final (index, label) in [
-            (0, 'Entdecken'),
-            (1, 'Gemerkt'),
-            (2, 'Favoriten'),
-            (3, 'Aus Vorrat'),
-          ])
-            ChoiceChip(
-              label: Text(label),
-              selected: recipeFilter == index,
-              onSelected: (_) => update(() => recipeFilter = index),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final entry in {
+                    'all': 'Alle',
+                    'favorites': 'Favoriten',
+                    ...Map.of(discoveryCategories)..remove('all'),
+                  }.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: recipeCategoryTile(entry.key, entry.value),
+                    ),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            tooltip: 'Kategorien durchsuchen',
+            onPressed: showRecipeCategories,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.tune_rounded, size: 20),
+          ),
         ],
       ),
-      gap(22),
+      gap(14),
       if (searching)
         section(
-          'Suchergebnisse',
+          switch (recipeFilter) {
+            1 => 'Gemerkte Rezepte',
+            2 => 'Favoriten',
+            3 => 'Aus deinem Vorrat',
+            _ => 'Suchergebnisse',
+          },
           action: TextButton(
             onPressed: () => update(() {
               query = '';
@@ -267,11 +444,16 @@ extension _RecipeDiscovery on _PlanningPageState {
                 ? 'Noch keine veröffentlichten Rezepte vorhanden.'
                 : recipeFilter == 2
                 ? 'Noch keine Favoriten für diese Auswahl. Markiere ein Rezept mit „Favorit“.'
+                : recipeFilter == 1
+                ? 'Noch keine gemerkten Rezepte für diese Auswahl. Speichere ein Rezept mit „Merken“.'
+                : recipeFilter == 3
+                ? 'Keine passenden Rezepte zu deinem Vorrat. Ergänze Zutaten im Vorrat oder ändere deine Suche.'
                 : 'Keine passenden Rezepte. Probiere einen anderen Suchbegriff oder eine andere Kategorie.',
             style: muted,
           ),
         ),
-      if (featured != null) recipeCard(featured, featured: true),
+      if (featured != null && recipeFilter == 0)
+        recipeCard(featured, featured: true),
       if (!searching) ...[
         gap(26),
         section('Beliebte Rezepte'),
@@ -282,49 +464,16 @@ extension _RecipeDiscovery on _PlanningPageState {
               style: muted,
             ),
           ),
-        for (final recipe in popular.take(4)) ...[
-          panel(
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 60,
-                  child: recipePhoto(recipe, height: 60),
-                ),
-              ),
-              title: Text(recipe.name),
-              subtitle: Text(
-                '${recipe.favoriteCount} Favoriten · ${recipe.minutes} Min.',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => details(recipe),
-            ),
-          ),
-          gap(10),
-        ],
+        if (popular.isNotEmpty) recipeGrid(popular.take(4).toList()),
       ],
-      if (filtered.length > 1) ...[
+      if (recipeFilter != 0 && filtered.isNotEmpty || filtered.length > 1) ...[
         gap(20),
-        section(searching ? 'Weitere Treffer' : 'Weitere Rezepte'),
-        LayoutBuilder(
-          builder: (context, constraints) => Wrap(
-            spacing: 14,
-            runSpacing: 14,
-            children: [
-              for (final recipe in filtered.where(
-                (recipe) => recipe.id != featured?.id,
-              ))
-                SizedBox(
-                  width: constraints.maxWidth >= 700
-                      ? (constraints.maxWidth - 28) / 3
-                      : constraints.maxWidth >= 340
-                      ? (constraints.maxWidth - 14) / 2
-                      : constraints.maxWidth,
-                  child: recipeCard(recipe),
-                ),
-            ],
-          ),
+        if (recipeFilter == 0)
+          section(searching ? 'Weitere Treffer' : 'Weitere Rezepte'),
+        recipeGrid(
+          filtered
+              .where((recipe) => recipeFilter != 0 || recipe.id != featured?.id)
+              .toList(),
         ),
       ],
       gap(18),
@@ -334,4 +483,23 @@ extension _RecipeDiscovery on _PlanningPageState {
       ),
     ];
   }
+
+  Widget recipeGrid(List<Recipe> items) => LayoutBuilder(
+    builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 700
+          ? 3
+          : constraints.maxWidth >= 260
+          ? 2
+          : 1;
+      final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
+      return Wrap(
+        spacing: 12,
+        runSpacing: 14,
+        children: [
+          for (final recipe in items)
+            SizedBox(width: width, child: recipeCard(recipe)),
+        ],
+      );
+    },
+  );
 }
