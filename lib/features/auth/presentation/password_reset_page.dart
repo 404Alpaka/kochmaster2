@@ -132,7 +132,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                     autofillHints: const [AutofillHints.newPassword],
                     decoration: const InputDecoration(
                       labelText: 'Neues Passwort',
-                      helperText: 'Mindestens 8 Zeichen',
+                      helperText: 'Mindestens 8 Zeichen, Groß- und Kleinbuchstabe sowie eine Zahl',
                     ),
                     validator: (value) =>
                         validatePassword(value, register: true),

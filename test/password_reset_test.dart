@@ -58,7 +58,7 @@ void main() {
         if (request.method == 'PUT' && request.url.path.endsWith('/user')) {
           expect(
             (jsonDecode(request.body) as Map)['password'],
-            'new-test-password',
+            'New-test-password1',
           );
           if (rejectPasswordOnce) {
             rejectPasswordOnce = false;
@@ -112,7 +112,7 @@ void main() {
       expect(requests.where((r) => r.method == 'PUT'), isEmpty);
       await tester.enterText(
         find.byType(TextFormField).first,
-        'new-test-password',
+        'New-test-password1',
       );
       await tester.enterText(
         find.byType(TextFormField).last,
@@ -127,7 +127,7 @@ void main() {
       expect(requests.where((r) => r.method == 'PUT'), isEmpty);
       await tester.enterText(
         find.byType(TextFormField).last,
-        'new-test-password',
+        'New-test-password1',
       );
       await tester.tap(find.text('Neues Passwort speichern'));
       await tester.pumpAndSettle();
@@ -142,7 +142,7 @@ void main() {
             .widget<TextFormField>(find.byType(TextFormField).first)
             .controller!
             .text,
-        'new-test-password',
+        'New-test-password1',
       );
       await tester.tap(find.text('Neues Passwort speichern'));
       await tester.pumpAndSettle();
@@ -169,8 +169,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(home: PasswordResetPage(client: client, recovery: true)),
       );
-      await tester.enterText(find.byType(TextFormField).first, 'new-password');
-      await tester.enterText(find.byType(TextFormField).last, 'new-password');
+      await tester.enterText(find.byType(TextFormField).first, 'New-password1');
+      await tester.enterText(find.byType(TextFormField).last, 'New-password1');
       await tester.tap(find.text('Neues Passwort speichern'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Der Link ist abgelaufen'), findsOneWidget);

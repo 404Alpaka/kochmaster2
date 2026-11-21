@@ -10,7 +10,7 @@ Der Parser ist anhand eines mehrseitigen REWE-eBons getestet. Andere Händlerlay
 
 Nach der Übernahme gelten die vorhandenen Speicherregeln: ohne Konto lokal, angemeldet im Kundenkonto und bei aktivem Haushalt im gemeinsamen Vorrat. Bonfoto und kompletter Bontext werden nicht gespeichert. Konto-Synchronisierungsfehler werden durch die vorhandene Kontoverwaltung angezeigt. Der lokale Duplikatindex gehört zum jeweiligen Kundenkonto; gemeinsame Vorratspositionen enthalten zusätzlich die ursprünglichen Importkennungen.
 
-Die Barcode-Erfassung unterstützt Live-Kamera, Barcode-Foto und manuelle EAN-Eingabe mit Prüfziffernprüfung. Live-Kamera benötigt Browserberechtigung und HTTPS oder localhost. ZXing erkennt den Barcode lokal, anschließend wird nur die Barcodenummer bei Open Food Facts abgefragt. Name und Packungsgröße werden vor dem Speichern im editierbaren Produktformular angezeigt. Unbekannte Produkte können manuell ergänzt werden. Quelle: [Open Food Facts](https://world.openfoodfacts.org/), Daten unter ODbL. Die Umsetzung ist für die Flutter-Web-App vorgesehen; native Plattformen zeigen derzeit einen Hinweis auf die Web-App.
+Die Web-App unterstützt Live-Kamera, Barcode-Foto und manuelle EAN-Eingabe mit Prüfziffernprüfung. Die iPhone-Anbindung erkennt Barcodes aus Kameraaufnahmen oder ausgewählten Bildern. Live-Kamera benötigt Browserberechtigung und HTTPS oder localhost. ZXing erkennt den Barcode lokal, anschließend wird nur die Barcodenummer bei Open Food Facts abgefragt. Name und Packungsgröße werden vor dem Speichern im editierbaren Produktformular angezeigt. Unbekannte Produkte können manuell ergänzt werden. Quelle: [Open Food Facts](https://world.openfoodfacts.org/), Daten unter ODbL. Die iPhone-App verwendet für Dateien und Kamera eine eigene native Anbindung: PDFKit liest PDF-Text, Vision erkennt Bilder und EAN-Barcodes, VisionKit stellt den Dokumentenscanner bereit. Die Erkennung läuft auf dem Gerät. Nur die Produktnummer wird bei der Produktsuche übertragen. Andere native Plattformen besitzen bislang keine entsprechende Implementierung.
 
 ## Entwicklung und Tests
 
@@ -20,3 +20,12 @@ Die Barcode-Erfassung unterstützt Live-Kamera, Barcode-Foto und manuelle EAN-Ei
 - Nach `flutter build web --dart-define=USE_DEMO=true --no-wasm-dry-run` prüft `node tool/test_receipt_app.mjs /pfad/zum/bon.pdf` die gesamte UI bis zur lokalen Speicherung und dem erneuten Laden.
 
 Bibliotheken und Lizenzen liegen unter `web/vendor/receipts/`. Bilder für Erkennungstests lassen sich mit `tool/make_receipt_test_images.py` erzeugen (Pillow, unter Windows).
+
+
+## iPhone-Build nach der nativen Ergänzung
+
+Die Änderung betrifft Swift und die iOS-Projektregistrierung. Hot Reload, Hot Restart oder das bloße Aktualisieren der Web-App reichen nicht. Auf einem Mac muss der aktuelle Projektstand mit Xcode/Flutter neu gebaut und auf dem iPhone installiert werden, beispielsweise mit `flutter pub get` und anschließend `flutter run -d <iphone-id>`. Für TestFlight ist ein neuer signierter Build erforderlich.
+
+Die neue Datei `ios/Runner/ReceiptNativeReader.swift` ist im Runner-Target und im AppDelegate registriert. Die iOS-Berechtigungstexte umfassen Bons, Barcodes und Rezeptbilder. Ein abgebrochener Dateidialog speichert nichts; nach erkannter Datei folgt weiterhin die bestehende Produktvorschau. Importkopien aus dem App-Sandbox-Inbox-/tmp-Verzeichnis werden nach dem Lesen entfernt. Externe Originaldateien werden nicht gelöscht.
+
+Flutter-Brückentests: `flutter test test/receipt_reader_native_test.dart test/receipt_import_test.dart`. Native Tests liegen im Xcode-Target `RunnerTests` und prüfen die Zeilenzuordnung, PDF-Auswertung und Dateifingerabdrücke. Der native iOS-Build und die Apple-Framework-Tests benötigen macOS/Xcode; sie können auf Windows nicht ausgeführt werden.

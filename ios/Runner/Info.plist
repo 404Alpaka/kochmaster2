@@ -48,9 +48,9 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Fotografiere dein Gericht, um es als Rezeptbild zu verwenden.</string>
+	<string>Scanne Kassenbons und Produktbarcodes oder fotografiere deine Gerichte.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Wähle ein Foto deines Gerichts als Rezeptbild aus.</string>
+	<string>Wähle Bonbilder, Barcode-Fotos oder Rezeptbilder aus deiner Fotomediathek.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

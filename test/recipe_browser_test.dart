@@ -112,6 +112,10 @@ void main() {
       await tester.tap(find.byTooltip('Rezept importieren'));
       await tester.pumpAndSettle();
       expect(find.text('Lieblingsrezept gefunden?'), findsOneWidget);
+      await tester.tap(find.text('Rezepte entdecken'));
+      await tester.pumpAndSettle();
+      expect(find.text('Lieblingsrezept gefunden?'), findsNothing);
+      expect(find.text('Rezepte entdecken'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -143,6 +147,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Rezept des Tages'), findsOneWidget);
     expect(find.byTooltip('Kategorien durchsuchen'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byTooltip('Kategorien durchsuchen')).dx,
+      lessThan(tester.getCenter(find.text('Alle')).dx),
+    );
     expect(find.byTooltip('Eigenes Rezept erstellen'), findsOneWidget);
     expect(find.byTooltip('Rezept importieren'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());

@@ -95,6 +95,7 @@ extension _RecipeDiscovery on _PlanningPageState {
               'Rezept importieren',
               Icons.file_download_outlined,
               () => update(() {
+                collectionImportReturnPage = 0;
                 collectionPage = 3;
                 personalRecipeError = null;
               }),
@@ -389,6 +390,13 @@ extension _RecipeDiscovery on _PlanningPageState {
     return [
       Row(
         children: [
+          IconButton(
+            tooltip: 'Kategorien durchsuchen',
+            onPressed: showRecipeCategories,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.tune_rounded, size: 20),
+          ),
+          const SizedBox(width: 6),
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -406,13 +414,6 @@ extension _RecipeDiscovery on _PlanningPageState {
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Kategorien durchsuchen',
-            onPressed: showRecipeCategories,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.tune_rounded, size: 20),
           ),
         ],
       ),

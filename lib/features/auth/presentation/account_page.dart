@@ -193,7 +193,9 @@ class _AccountPageState extends State<AccountPage> {
                   ],
                   decoration: InputDecoration(
                     labelText: 'Passwort',
-                    helperText: register ? 'Mindestens 8 Zeichen' : null,
+                    helperText: register
+                        ? 'Mindestens 8 Zeichen, Groß- und Kleinbuchstabe sowie eine Zahl'
+                        : null,
                     suffixIcon: IconButton(
                       tooltip: visible
                           ? 'Passwort verbergen'

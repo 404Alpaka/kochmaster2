@@ -33,7 +33,9 @@ extension _ReceiptImportViews on _PlanningPageState {
 
   void pantryImportError(Object error) {
     if (!mounted) return;
-    final message = error is FormatException
+    final message = error is PlatformException
+        ? error.message ?? 'Die Erkennung konnte nicht abgeschlossen werden.'
+        : error is FormatException
         ? error.message
         : error.toString().replaceFirst(
             RegExp(r'^(?:Error|Bad state|Exception|Unsupported operation):\s*'),

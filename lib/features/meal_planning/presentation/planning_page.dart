@@ -33,7 +33,8 @@ import '../../recipes/presentation/recipe_image.dart';
 import '../../account_data/data/account_data_repository.dart';
 import '../../households/data/household_repository.dart';
 
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, PlatformException;
 
 import '../../shopping/domain/build_shopping_list.dart';
 
@@ -90,6 +91,7 @@ class _PlanningPageState extends State<PlanningPage> {
   List<Recipe> get dinnerRecipes => recipes.where(isDinnerRecipe).toList();
   final personalRecipes = <Map<String, dynamic>>[];
   int collectionPage = 0;
+  int collectionImportReturnPage = 0;
   String? recipeCategory;
   final collectionFilters = <String>{};
   String collectionQuery = '';

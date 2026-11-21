@@ -69,8 +69,8 @@ void main() {
           '  Élodie  ',
           ' O’Connor-Müller ',
           ' test@example.com ',
-          'test-password',
-          'test-password',
+          'Test-password1',
+          'Test-password1',
         ];
         for (var i = 0; i < values.length; i++) {
           await tester.ensureVisible(find.byType(TextFormField).at(i));
@@ -85,7 +85,7 @@ void main() {
           await tester.pump();
         }
         expect(signup!['email'], 'test@example.com');
-        expect(signup!['password'], 'test-password');
+        expect(signup!['password'], 'Test-password1');
         expect(signup!['data'], {
           'first_name': 'Élodie',
           'last_name': 'O’Connor-Müller',
@@ -164,6 +164,16 @@ void main() {
     expect(validateEmail('abc'), contains('gültige'));
     expect(validateEmail(' person@example.com '), isNull);
     expect(validatePassword('abc', register: true), contains('mindestens 8'));
+    expect(validatePassword('Abcdefgh', register: true), contains('Zahl'));
+    expect(
+      validatePassword('abcdefgh1', register: true),
+      contains('Großbuchstaben'),
+    );
+    expect(
+      validatePassword('ABCDEFG1', register: true),
+      contains('Kleinbuchstaben'),
+    );
+    expect(validatePassword('Abcdefg1', register: true), isNull);
     expect(validatePassword('abc', register: false), isNull);
     expect(
       authErrorMessage(

@@ -18,8 +18,19 @@ String? validateEmail(String? input) {
 
 String? validatePassword(String? value, {required bool register}) {
   if (value == null || value.isEmpty) return 'Bitte gib dein Passwort ein.';
-  if (register && value.length < 8) {
-    return 'Dein Passwort ist zu kurz: mindestens 8 Zeichen erforderlich.';
+  if (register) {
+    if (value.runes.length < 8) {
+      return 'Das Passwort benötigt mindestens 8 Zeichen.';
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Das Passwort benötigt mindestens einen Großbuchstaben.';
+    }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return 'Das Passwort benötigt mindestens einen Kleinbuchstaben.';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Das Passwort benötigt mindestens eine Zahl.';
+    }
   }
   return null;
 }
@@ -28,7 +39,7 @@ String authErrorMessage(AuthException error) => switch (error.code) {
   'invalid_credentials' =>
     'E-Mail-Adresse oder Passwort ist falsch. Bitte prüfe beide Angaben.',
   'email_not_confirmed' => 'Bitte bestätige zuerst deine E-Mail-Adresse über den Link in der Bestätigungsmail.',
-  'weak_password' => 'Das Passwort ist zu schwach. Verwende ein längeres Passwort mit Groß- und Kleinbuchstaben, Zahlen und Sonderzeichen.',
+  'weak_password' => 'Das Passwort ist zu schwach. Verwende mindestens 8 Zeichen mit Groß- und Kleinbuchstaben sowie mindestens einer Zahl.',
   'email_address_invalid' || 'validation_failed' => 'Die E-Mail-Adresse oder andere Angaben sind ungültig. Bitte überprüfe sie.',
   'email_address_not_authorized' => 'An diese Adresse kann Supabase noch keine Bestätigungsmail senden. Für weitere Empfänger muss ein eigener E-Mail-Versand (SMTP) eingerichtet werden.',
   'user_already_exists' || 'email_exists' =>

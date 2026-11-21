@@ -44,7 +44,7 @@ void main() {
       find.byType(TextFormField).at(2),
       'test@example.com',
     );
-    await tester.enterText(find.byType(TextFormField).at(3), 'long-enough');
+    await tester.enterText(find.byType(TextFormField).at(3), 'LongEnough1');
     await tester.enterText(find.byType(TextFormField).at(4), 'different');
     await tester.scrollUntilVisible(
       find.widgetWithText(FilledButton, 'Registrieren'),
