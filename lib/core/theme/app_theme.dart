@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+final appThemeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
+
 class AppColors {
   static const sage = Color(0xFF245D46);
   static const terracotta = Color(0xFFB47B37);

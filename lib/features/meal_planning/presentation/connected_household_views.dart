@@ -434,15 +434,17 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       ),
       gap(20),
     ] else ...[
-      recipeAction('Persönliche Einstellungen bearbeiten',false,editHousehold),gap(12),
-      recipeAction('Persönliches Budget bearbeiten',false,editBudget),gap(12),
       recipeAction(
-        'Persönliche Ausschlüsse & Abneigungen',
+        'Essenspräferenzen & Planung',
+        false,
+        editFoodPreferences,
+      ),
+      gap(12),
+      recipeAction(
+        'Ausschlüsse & Abneigungen',
         false,
         () => householdGo(7),
       ),
-      gap(12),
-      recipeAction('Persönliche Planregeln bearbeiten', false, editCommonRules),
       gap(12),
       recipeAction('Wochenrückblick', false, () => householdGo(11)),
       gap(20),

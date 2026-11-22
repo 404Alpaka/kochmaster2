@@ -193,15 +193,14 @@ extension _HouseholdViews on _PlanningPageState {
   }
 
   Future<void> editCommonRules() async {
-    var newDiet = diet; var minutes = maxMinutes; var newBudget = planBudget; var validBudget = true;
+    var newDiet = diet; var minutes = maxMinutes;
     final confirmed = await showDialog<bool>(context: context, builder: (context) => StatefulBuilder(builder: (context, setDialog) => AlertDialog(
       title: const Text('Gemeinsame Planregeln'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         DropdownButtonFormField<String>(isExpanded: true, initialValue: newDiet, decoration: const InputDecoration(labelText: 'Ernährungsweise'), items: [for (final d in ['Ohne Einschränkung', 'Vegetarisch', 'Vegan']) DropdownMenuItem(value: d, child: Text(d, maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: (v) => newDiet = v!), gap(12),
-        DropdownButtonFormField<int>(isExpanded: true, initialValue: minutes, decoration: const InputDecoration(labelText: 'Kochzeit'), items: [for (final m in [15, 30, 45, 0]) DropdownMenuItem(value: m, child: Text(m == 0 ? 'Flexibel' : 'Bis $m Minuten', maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: (v) => minutes = v!), gap(12),
-        TextFormField(initialValue: newBudget?.toStringAsFixed(2) ?? '', decoration: const InputDecoration(labelText: 'Planbudget · leer = kein Limit'), keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (v) { newBudget = v.trim().isEmpty ? null : double.tryParse(v.replaceAll(',', '.')); setDialog(() => validBudget = v.trim().isEmpty || (newBudget != null && newBudget!.isFinite && newBudget! > 0)); }),
-      ])), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')), TextButton(onPressed: () { if (validBudget) Navigator.pop(context, true); }, child: const Text('Speichern'))],
+        DropdownButtonFormField<int>(isExpanded: true, initialValue: minutes, decoration: const InputDecoration(labelText: 'Kochzeit'), items: [for (final m in [15, 30, 45, 0]) DropdownMenuItem(value: m, child: Text(m == 0 ? 'Flexibel' : 'Bis $m Minuten', maxLines: 1, overflow: TextOverflow.ellipsis))], onChanged: (v) => minutes = v!),
+      ])), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Abbrechen')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Speichern'))],
     )));
-    if (confirmed == true && mounted) { update(() { diet = newDiet; maxMinutes = minutes; planBudget = newBudget; planBudgetInitialized = true; }); savePreferences(); }
+    if (confirmed == true && mounted) { update(() { diet = newDiet; maxMinutes = minutes; }); savePreferences(); }
   }
 
   Widget householdActionBar() {

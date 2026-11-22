@@ -5,9 +5,11 @@ import 'features/auth/data/create_auth_client.dart';
 import 'app/kochmaster_app.dart';
 import 'core/config/app_config.dart';
 import 'features/recipes/data/supabase_recipe_repository.dart';
+import 'core/cooking_runtime.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CookingRuntime.initialize();
   const url = AppConfig.url;
   const key = AppConfig.publishableKey;
   if (AppConfig.useDemo) {

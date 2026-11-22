@@ -7,6 +7,7 @@ extension _PantryViews on _PlanningPageState {
     3 => preparedMealsView(),
     4 => preparedStorageView(),
     5 => preparedReplanView(),
+    6 => pantryRecipeSuggestionsView(),
     _ => pantryView(),
   };
 
@@ -256,6 +257,19 @@ extension _PantryViews on _PlanningPageState {
       title('Dein Vorrat'),
       gap(4),
       Text('Weniger wegwerfen. Mehr draus machen.', style: muted),
+      gap(12),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: () => update(() {
+            pantrySuggestionPortions = servings;
+            pantryPage = 6;
+          }),
+          icon: const Icon(Icons.restaurant_menu_outlined),
+          label: const Text('Was kann ich kochen?'),
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
+        ),
+      ),
       if (empty) ...[
         gap(62),
         emptyPantryIllustration(),
@@ -480,6 +494,268 @@ extension _PantryViews on _PlanningPageState {
           Text('Hier ist noch Platz. Füge neue Vorräte hinzu.', style: muted),
         ],
         gap(84),
+      ],
+    ];
+  }
+
+  List<PantryRecipeMatch> pantryRecipeMatches() {
+    final result = const PantryRecipeMatcher().match(
+      recipes: eligibleRecipes,
+      pantry: pantry,
+      portions: pantrySuggestionPortions,
+    );
+    return result.where((match) {
+      if (pantrySuggestionFilter == 1 && !match.immediatelyCookable)
+        return false;
+      if (pantrySuggestionFilter == 2 && match.missingCount > 2) return false;
+      if (pantrySuggestionMaxMinutes > 0 &&
+          match.recipe.minutes > pantrySuggestionMaxMinutes)
+        return false;
+      return true;
+    }).toList();
+  }
+
+  void addMissingIngredients(PantryRecipeMatch match) {
+    final planItems = buildShoppingList(plan.values);
+    for (final missing in match.matches.where(
+      (m) => m.state != PantryIngredientState.full,
+    )) {
+      final requiredMissing = missing.missingQuantity;
+      if (!requiredMissing.isFinite || requiredMissing <= 0) continue;
+
+      var alreadyListed = 0.0;
+      for (final item in [...planItems, ...pantryShoppingItems]) {
+        if (item.ingredientId != missing.ingredient.ingredientId) continue;
+        final converted = planningQuantity(item.quantity, item.unit);
+        if (converted != null && converted.$2 == missing.unit)
+          alreadyListed += converted.$1;
+      }
+      final toAdd = ((requiredMissing - alreadyListed).clamp(
+        0,
+        double.infinity,
+      )).toDouble();
+      if (toAdd <= 0) continue;
+
+      final existingIndex = pantryShoppingItems.indexWhere((item) {
+        if (item.ingredientId != missing.ingredient.ingredientId) return false;
+        final converted = planningQuantity(item.quantity, item.unit);
+        return converted != null && converted.$2 == missing.unit;
+      });
+      if (existingIndex >= 0) {
+        final existing = pantryShoppingItems[existingIndex];
+        pantryShoppingItems[existingIndex] = IngredientAmount(
+          existing.ingredientId,
+          existing.name,
+          existing.quantity + toAdd,
+          existing.unit,
+        );
+      } else {
+        pantryShoppingItems.add(
+          IngredientAmount(
+            missing.ingredient.ingredientId,
+            missing.ingredient.name,
+            toAdd,
+            missing.unit == 'piece' ? 'Stück' : missing.unit,
+          ),
+        );
+      }
+    }
+    savePreferences();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          match.missingCount == 0
+              ? 'Dieses Rezept ist bereits vollständig.'
+              : 'Fehlmengen wurden zum Korb hinzugefügt.',
+        ),
+      ),
+    );
+  }
+
+  List<Widget> pantryRecipeSuggestionsView() {
+    final matches = pantryRecipeMatches();
+    return [
+      proposalBack('Zurück zum Vorrat', () => update(() => pantryPage = 0)),
+      gap(14),
+      title('Was kann ich kochen?'),
+      gap(8),
+      Text(
+        pantry.isEmpty
+            ? 'Dein Vorrat ist leer.'
+            : 'Vorschläge aus deinem Vorrat für ${pantrySuggestionPortions} Personen.',
+        style: muted,
+      ),
+      if (pantry.isEmpty) ...[
+        gap(18),
+        surveyCard(
+          'Noch keine Zutaten erfasst',
+          'Füge Lebensmittel hinzu, um passende Rezepte zu berechnen.',
+          color: AppColors.cream,
+        ),
+        gap(12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: addPantryItem,
+            icon: const Icon(Icons.add),
+            label: const Text('Lebensmittel hinzufügen'),
+          ),
+        ),
+      ] else ...[
+        gap(16),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$pantrySuggestionPortions Personen',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Weniger Portionen',
+              onPressed: pantrySuggestionPortions > 1
+                  ? () => update(() => pantrySuggestionPortions--)
+                  : null,
+              icon: const Icon(Icons.remove),
+            ),
+            IconButton(
+              tooltip: 'Mehr Portionen',
+              onPressed: pantrySuggestionPortions < 30
+                  ? () => update(() => pantrySuggestionPortions++)
+                  : null,
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+        gap(10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 8,
+          children: [
+            for (final entry in const [
+              (0, 'Alle Vorschläge'),
+              (1, 'Sofort kochbar'),
+              (2, 'Maximal 2 Zutaten fehlen'),
+            ])
+              FilterChip(
+                label: Text(entry.$2),
+                selected: pantrySuggestionFilter == entry.$1,
+                onSelected: (_) =>
+                    update(() => pantrySuggestionFilter = entry.$1),
+              ),
+          ],
+        ),
+        gap(8),
+        DropdownButtonFormField<int>(
+          initialValue: pantrySuggestionMaxMinutes,
+          decoration: const InputDecoration(
+            labelText: 'Maximale Zubereitungszeit',
+          ),
+          items: const [
+            DropdownMenuItem(value: 0, child: Text('Alle Zeiten')),
+            DropdownMenuItem(value: 15, child: Text('Bis 15 Minuten')),
+            DropdownMenuItem(value: 30, child: Text('Bis 30 Minuten')),
+            DropdownMenuItem(value: 45, child: Text('Bis 45 Minuten')),
+            DropdownMenuItem(value: 60, child: Text('Bis 60 Minuten')),
+          ],
+          onChanged: (value) =>
+              update(() => pantrySuggestionMaxMinutes = value ?? 0),
+        ),
+        gap(16),
+        if (matches.isEmpty)
+          surveyCard(
+            'Keine passenden Rezepte',
+            'Passe die Filter an oder ergänze weitere Vorräte.',
+            color: AppColors.cream,
+          ),
+        for (final match in matches)
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                detailServings = pantrySuggestionPortions;
+                details(match.recipe);
+                pantryPage = 0;
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    child: recipePhoto(match.recipe, height: 180),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                match.recipe.name,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            if (match.immediatelyCookable)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.softGreen,
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: const Text(
+                                  'Sofort kochbar',
+                                  style: TextStyle(
+                                    color: AppColors.sage,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        gap(8),
+                        Text(
+                          '${match.recipe.minutes} Minuten · ${match.percentage} % Zutaten vorhanden',
+                          style: muted,
+                        ),
+                        gap(4),
+                        Text(
+                          match.missingCount == 0
+                              ? 'Alle Zutaten vorhanden'
+                              : '${match.missingCount} ${match.missingCount == 1 ? 'Zutat fehlt' : 'Zutaten fehlen'}',
+                          style: TextStyle(
+                            color: match.missingCount == 0
+                                ? AppColors.sage
+                                : AppColors.terracotta,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (match.missingCount > 0) ...[
+                          gap(12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => addMissingIngredients(match),
+                              child: const Text(
+                                'Fehlende Zutaten zur Einkaufsliste',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     ];
   }
@@ -859,7 +1135,11 @@ extension _PantryViews on _PlanningPageState {
     });
     savePreferences();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$count ${count == 1 ? 'Produkt' : 'Produkte'} zum Vorrat hinzugefügt.')),
+      SnackBar(
+        content: Text(
+          '$count ${count == 1 ? 'Produkt' : 'Produkte'} zum Vorrat hinzugefügt.',
+        ),
+      ),
     );
   }
 

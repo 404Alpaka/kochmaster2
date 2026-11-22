@@ -100,6 +100,28 @@ extension _MiseViews on _PlanningPageState {
           child: Column(
             children: [
               if (recipeDiscoveryActive) recipePinnedHeader(),
+              if (tab == 4 && householdPage >= 7 && householdPage < 14)
+                AppBar(
+                  title: Text(switch (householdPage) {
+                    7 => 'Ausschlüsse & Abneigungen',
+                    8 => 'Fester Ausschluss',
+                    9 => 'Ausgeblendete Rezepte',
+                    10 => 'Abneigung',
+                    11 => 'Wochenrückblick',
+                    12 => 'Woche vervollständigen',
+                    13 => 'Nächste Woche',
+                    _ => 'Einstellungen',
+                  }),
+                  leading: BackButton(
+                    onPressed: () => householdGo(
+                      householdPage == 7 || householdPage == 11
+                          ? 0
+                          : householdPage == 12 || householdPage == 13
+                          ? 11
+                          : 7,
+                    ),
+                  ),
+                ),
               Expanded(
                 child: Builder(
                   builder: (contentContext) => ListView(
@@ -504,6 +526,23 @@ extension _MiseViews on _PlanningPageState {
     semanticLabel: 'Rezeptbild für ${recipe.name}',
   );
 
+  String _pantryMatchLabel(PantryIngredientMatch match) {
+    String amount(double value) => value
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'\.0+$'), '')
+        .replaceAll('.', ',');
+    final needed =
+        '${amount(match.requiredQuantity)} ${match.unit == 'piece' ? 'Stück' : match.unit}';
+    return switch (match.state) {
+      PantryIngredientState.full =>
+        '${match.ingredient.name}: ${needed} vorhanden',
+      PantryIngredientState.partial =>
+        '${match.ingredient.name}: ${amount(match.availableQuantity)} ${match.unit == 'piece' ? 'Stück' : match.unit} vorhanden, ${needed} benötigt',
+      PantryIngredientState.missing =>
+        '${match.ingredient.name}: ${needed} benötigt, nicht vorhanden',
+    };
+  }
+
   List<Widget> recipeDetail(Recipe recipe) {
     Widget action(
       String label,
@@ -748,32 +787,62 @@ extension _MiseViews on _PlanningPageState {
       ),
       gap(10),
       panel(
-        Column(
-          children: [
-            for (final item in recipe.ingredients)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${(item.quantity * detailServings / recipe.servings).toStringAsFixed(1).replaceFirst(RegExp(r"\.0$"), "").replaceAll(".", ",")} ${item.unit} ${item.name}',
-                        style: const TextStyle(fontSize: 13),
-                      ),
+        Builder(
+          builder: (context) {
+            final match = const PantryRecipeMatcher()
+                .match(
+                  recipes: [recipe],
+                  pantry: pantry,
+                  portions: detailServings,
+                )
+                .single;
+            return Column(
+              children: [
+                for (final ingredientMatch in match.matches)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _pantryMatchLabel(ingredientMatch),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          switch (ingredientMatch.state) {
+                            PantryIngredientState.full => '✅ Vollständig',
+                            PantryIngredientState.partial => '⚠️ Teilweise',
+                            PantryIngredientState.missing => '❌ Fehlt',
+                          },
+                          style: TextStyle(
+                            fontSize: 11,
+                            color:
+                                ingredientMatch.state ==
+                                    PantryIngredientState.full
+                                ? AppColors.sage
+                                : AppColors.terracotta,
+                          ),
+                        ),
+                      ],
                     ),
-                    if (pantry.any(
-                      (p) =>
-                          (p['name'] as String).toLowerCase() ==
-                          item.name.toLowerCase(),
-                    ))
-                      const Text(
-                        '✓ Im Vorrat',
-                        style: TextStyle(fontSize: 11, color: AppColors.sage),
-                      ),
-                  ],
-                ),
-              ),
-          ],
+                  ),
+                if (match.missingCount > 0) ...[
+                  gap(12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => addMissingIngredients(match),
+                      icon: const Icon(Icons.shopping_cart_outlined),
+                      label: const Text('Fehlende Zutaten zur Einkaufsliste'),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
       gap(16),

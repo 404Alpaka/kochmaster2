@@ -82,6 +82,10 @@ void main() {
         expect(find.text('Profil'), findsOneWidget);
         expect(find.text('Fabian'), findsOneWidget);
         expect(find.text('fabian@beispiel.de'), findsOneWidget);
+        expect(
+          find.textContaining('Kundennummer: ${account.accountA}'),
+          findsOneWidget,
+        );
         expect(find.text('Gespeichert'), findsOneWidget);
         expect(find.text('PLANUNGSBEREICH'), findsOneWidget);
         expect(find.text('Privat'), findsOneWidget);
@@ -109,20 +113,10 @@ void main() {
         expect(find.byType(FoodPreferencesPage), findsOneWidget);
         await tester.pageBack();
         await tester.pumpAndSettle();
-        await reveal(tester, find.text('Planregeln'));
-        await tester.tap(find.text('Planregeln'));
-        await tester.pumpAndSettle();
-        expect(find.text('Gemeinsame Planregeln'), findsOneWidget);
-        await tester.tap(find.text('Abbrechen'));
-        await tester.pumpAndSettle();
-        await reveal(tester, find.text('Budget'));
-        await tester.tap(find.text('Budget'));
-        await tester.pumpAndSettle();
-        expect(find.text('Dein Wochenbudget'), findsOneWidget);
-        await tester.tap(find.text('Abbrechen'));
-        await tester.pumpAndSettle();
-        await reveal(tester, find.text('Rezepte verwalten'));
-        await tester.tap(find.text('Rezepte verwalten'));
+        expect(find.text('Planregeln'), findsNothing);
+        expect(find.text('Budget'), findsNothing);
+        await reveal(tester, find.text('Meine Rezepte'));
+        await tester.tap(find.text('Meine Rezepte'));
         await tester.pumpAndSettle();
         expect(find.text('Meine Rezepte'), findsOneWidget);
         expect(tester.takeException(), isNull);

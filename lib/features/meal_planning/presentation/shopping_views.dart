@@ -39,10 +39,29 @@ extension _ShoppingViews on _PlanningPageState {
     _ => basketView(),
   };
 
-  bool get cartHasItems =>
-      shoppingExample || buildShoppingList(plan.values).isNotEmpty;
-  bool get cartIsExample =>
-      shoppingExample && buildShoppingList(plan.values).isEmpty;
+  List<IngredientAmount> get shoppingBasketItems {
+    final merged = <(String, String), IngredientAmount>{};
+    for (final item in [
+      ...buildShoppingList(plan.values),
+      ...pantryShoppingItems,
+    ]) {
+      final converted = planningQuantity(item.quantity, item.unit);
+      final unit = converted?.$2 ?? item.unit;
+      final quantity = converted?.$1 ?? item.quantity;
+      final key = (item.ingredientId, unit);
+      final existing = merged[key];
+      merged[key] = IngredientAmount(
+        item.ingredientId,
+        item.name,
+        (existing?.quantity ?? 0) + quantity,
+        unit == 'piece' ? 'Stück' : unit,
+      );
+    }
+    return merged.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  bool get cartHasItems => shoppingExample || shoppingBasketItems.isNotEmpty;
+  bool get cartIsExample => shoppingExample && shoppingBasketItems.isEmpty;
 
   Widget shoppingActionBar() {
     if (shoppingPage == 2) {
@@ -127,7 +146,7 @@ extension _ShoppingViews on _PlanningPageState {
   );
 
   List<Widget> basketView() {
-    final items = buildShoppingList(plan.values);
+    final items = shoppingBasketItems;
     final empty = !cartHasItems;
     final totals = [
       for (final market in _markets)

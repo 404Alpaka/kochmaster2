@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/auth/data/session_storage.dart';
 
 import '../features/recipes/data/demo_recipe_repository.dart';
 import 'recipe_loader.dart';
@@ -12,32 +13,51 @@ import '../features/meal_planning/data/weekly_plan_repository.dart';
 import '../features/recipes/domain/recipe.dart';
 import '../features/meal_planning/presentation/planning_page.dart';
 
-class KochmasterApp extends StatelessWidget {
+class KochmasterApp extends StatefulWidget {
   const KochmasterApp({super.key, this.repository, this.client});
   final SupabaseClient? client;
   final RecipeRepository? repository;
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'mise.',
-    debugShowCheckedModeBanner: false,
-    theme: AppTheme.light,
-    home: client != null
-        ? AccountScope(
-            client: client!,
-            storageKey: "kochmaster-${client!.rest.url}-session",
-            builder: (user) => _AccountCatalog(
-              key: ValueKey((client, user?.id)),
-              repository: repository!,
-              client: client!,
-              user: user,
+  State<KochmasterApp> createState() => _KochmasterAppState();
+}
+
+class _KochmasterAppState extends State<KochmasterApp> {
+  @override
+  void initState() {
+    super.initState();
+    appThemeMode.value = readSession('mise-theme-mode') == 'dark'
+        ? ThemeMode.dark
+        : ThemeMode.light;
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(
+    valueListenable: appThemeMode,
+    builder: (context, mode, _) => MaterialApp(
+      title: 'mise.',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: mode,
+      home: widget.client != null
+          ? AccountScope(
+              client: widget.client!,
+              storageKey: 'kochmaster-${widget.client!.rest.url}-session',
+              builder: (user) => _AccountCatalog(
+                key: ValueKey((widget.client, user?.id)),
+                repository: widget.repository!,
+                client: widget.client!,
+                user: user,
+              ),
+            )
+          : widget.repository == null
+          ? PlanningPage(recipes: DemoRecipeRepository().getAll(), isDemo: true)
+          : RecipeLoader(
+              repository: widget.repository!,
+              builder: (recipes) =>
+                  PlanningPage(recipes: recipes, isDemo: false),
             ),
-          )
-        : repository == null
-        ? PlanningPage(recipes: DemoRecipeRepository().getAll(), isDemo: true)
-        : RecipeLoader(
-            repository: repository!,
-            builder: (recipes) => PlanningPage(recipes: recipes, isDemo: false),
-          ),
+    ),
   );
 }
 

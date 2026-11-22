@@ -20,12 +20,15 @@ import '../../recipes/presentation/recipe_editor_page.dart';
 import 'package:supabase/supabase.dart';
 
 import '../../auth/presentation/account_page.dart';
+import '../../auth/presentation/auth_messages.dart';
 import '../data/weekly_plan_repository.dart';
 import '../data/receipt_reader.dart';
 import '../domain/receipt_parser.dart';
 import '../domain/meal_plan.dart';
 import '../domain/weekly_planner.dart';
 import '../domain/planning_resources.dart';
+import '../domain/cooking_timer.dart';
+import '../../../core/cooking_runtime.dart';
 import '../domain/planning_diner.dart';
 import 'household_diners_page.dart';
 import '../../recipes/domain/recipe.dart';
@@ -37,6 +40,7 @@ import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, PlatformException;
 
 import '../../shopping/domain/build_shopping_list.dart';
+import '../domain/pantry_recipe_matcher.dart';
 
 part 'mise_views.dart';
 part 'home_views.dart';
@@ -121,7 +125,7 @@ class _PlanningPageState extends State<PlanningPage> {
   DateTime? cookingDate;
   String cookingKey = '';
   Timer? cookingTicker;
-  final cookingTimers = <int, _CookingTimer>{};
+  final cookingTimers = <int, CookingTimer>{};
   final cookingUses = <_CookingUse>[];
   bool deductCookingStock = true;
   int remainingCookedPortions = 0;
@@ -234,6 +238,10 @@ class _PlanningPageState extends State<PlanningPage> {
   int preparedPlanPortions = 1;
   String? preparedError;
   int pantryPage = 0;
+  int pantrySuggestionPortions = 2;
+  int pantrySuggestionFilter = 0;
+  int pantrySuggestionMaxMinutes = 0;
+  final pantryShoppingItems = <IngredientAmount>[];
   List<Map<String, dynamic>> receiptDraft = [];
   bool receiptResolved = false;
   bool receiptIsDemo = true;
@@ -310,6 +318,16 @@ class _PlanningPageState extends State<PlanningPage> {
     'personalExclusions': personalExclusions.toList(),
     'personalDislikes': personalDislikes.toList(),
     'pantry': pantry,
+    'pantryShoppingItems': pantryShoppingItems
+        .map(
+          (item) => {
+            'ingredient_id': item.ingredientId,
+            'name': item.name,
+            'quantity': item.quantity,
+            'unit': item.unit,
+          },
+        )
+        .toList(),
     'importedReceiptIds': importedReceiptIds.toList(),
     'personalRecipes': personalRecipes,
     'cookedEntries': cookedEntries.toList(),
@@ -407,6 +425,7 @@ class _PlanningPageState extends State<PlanningPage> {
     cookedEntries.clear();
     preparedMeals.clear();
     personalRecipes.clear();
+    pantryShoppingItems.clear();
 
     rememberedRecipes.addAll(
       List<String>.from(data['rememberedRecipes'] as List? ?? []),
@@ -484,11 +503,25 @@ class _PlanningPageState extends State<PlanningPage> {
     pantry = (data['pantry'] as List? ?? [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
+    pantryShoppingItems
+      ..clear()
+      ..addAll(
+        (data['pantryShoppingItems'] as List? ?? []).map((entry) {
+          final item = Map<String, dynamic>.from(entry as Map);
+          return IngredientAmount(
+            item['ingredient_id'] as String,
+            item['name'] as String,
+            (item['quantity'] as num).toDouble(),
+            item['unit'] as String,
+          );
+        }),
+      );
   }
 
   @override
   void dispose() {
     cookingTicker?.cancel();
+    unawaited(CookingRuntime.disableKeepScreenOn());
     searchController.dispose();
     super.dispose();
   }

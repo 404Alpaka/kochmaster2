@@ -121,34 +121,6 @@ class _FoodPreferencesPageState extends State<FoodPreferencesPage> {
                 ],
               ),
               section(
-                'Allergien & Ausschlüsse',
-                'Diese Zutaten sollen bei Rezeptvorschlägen ausgeschlossen werden.',
-                [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final value in planningAllergens)
-                        FilterChip(
-                          label: Text(value),
-                          selected: exclusions.contains(value),
-                          onSelected: (selected) => setState(() {
-                            if (selected) {
-                              exclusions.add(value);
-                            } else {
-                              exclusions.remove(value);
-                            }
-                          }),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Bei Einschränkungen werden nur dafür geprüfte Rezepte vorgeschlagen.',
-                  ),
-                ],
-              ),
-              section(
                 'Personen & Tage',
                 'Für wie viele Personen und Abendessen planst du?',
                 [

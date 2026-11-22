@@ -110,6 +110,14 @@ extension _HomeViews on _PlanningPageState {
 
   Future<void> openTodayCooking() async {
     if (loading || saving) return;
+    if (cookingRecipe != null && !cookedEntries.contains(cookingKey)) {
+      await openCooking(
+        cookingRecipe!,
+        portions: cookingPortions,
+        day: cookingDay,
+      );
+      return;
+    }
     final today = pantryToday;
     final currentWeek = mondayOf(today);
     selectTab(1);
@@ -209,11 +217,15 @@ extension _HomeViews on _PlanningPageState {
       homePlanCard(),
       gap(12),
       homeCookingCard(
-        todayMeal?.recipe,
-        todayMeal?.recipe.name ??
-            (dateKey(week) == dateKey(mondayOf(today))
-                ? 'Heute noch nichts geplant'
-                : 'Heutigen Plan öffnen'),
+        cookingRecipe != null && !cookedEntries.contains(cookingKey)
+            ? cookingRecipe
+            : todayMeal?.recipe,
+        cookingRecipe != null && !cookedEntries.contains(cookingKey)
+            ? 'Schritt ${cookingStep + 1} von ${cookingRecipe!.steps.length} · ${cookingRecipe!.name}'
+            : todayMeal?.recipe.name ??
+                  (dateKey(week) == dateKey(mondayOf(today))
+                      ? 'Heute noch nichts geplant'
+                      : 'Heutigen Plan öffnen'),
       ),
       gap(24),
       section(
@@ -409,9 +421,14 @@ extension _HomeViews on _PlanningPageState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Kochen starten',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+                  Text(
+                    cookingRecipe != null && !cookedEntries.contains(cookingKey)
+                        ? 'Kochvorgang fortsetzen'
+                        : 'Kochen starten',
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   gap(5),
                   Text(subtitle, style: muted.copyWith(fontSize: 14)),
