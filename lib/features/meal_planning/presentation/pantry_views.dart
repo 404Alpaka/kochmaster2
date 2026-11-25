@@ -12,15 +12,7 @@ extension _PantryViews on _PlanningPageState {
   };
 
   (double, String)? pantryAmount(Map<String, dynamic> item) {
-    final match = RegExp(r'^\s*(\d+(?:[.,]\d+)?)\s*(.*?)\s*$')
-        .firstMatch(item['amount'] as String? ?? '');
-    if (match == null) return null;
-    return (
-      double.parse(match.group(1)!.replaceAll(',', '.')),
-      ['packung', 'packungen'].contains(match.group(2)!.toLowerCase())
-          ? 'Packung'
-          : match.group(2)!,
-    );
+    return parseQuantity(item['amount'] as String?);
   }
 
   String amountLabel(double value, String unit) =>
@@ -505,18 +497,26 @@ extension _PantryViews on _PlanningPageState {
       portions: pantrySuggestionPortions,
     );
     return result.where((match) {
-      if (pantrySuggestionFilter == 1 && !match.immediatelyCookable)
+      if (pantrySuggestionFilter == 1 && !match.immediatelyCookable) {
         return false;
+      }
       if (pantrySuggestionFilter == 2 && match.missingCount > 2) return false;
       if (pantrySuggestionMaxMinutes > 0 &&
-          match.recipe.minutes > pantrySuggestionMaxMinutes)
+          match.recipe.minutes > pantrySuggestionMaxMinutes) {
         return false;
+      }
       return true;
     }).toList();
   }
 
-  void addMissingIngredients(PantryRecipeMatch match) {
-    final planItems = buildShoppingList(plan.values);
+  Future<void> addMissingIngredients(PantryRecipeMatch match) async {
+    if (saving || loading || readOnlyShared || accountLoading ||
+        (accountConnected && (!accountReady || accountError != null))) {
+      return;
+    }
+    final before = shoppingBasketItems;
+    final extra = mergeIngredientAmounts(pantryShoppingItems);
+    var changed = false;
     for (final missing in match.matches.where(
       (m) => m.state != PantryIngredientState.full,
     )) {
@@ -524,11 +524,11 @@ extension _PantryViews on _PlanningPageState {
       if (!requiredMissing.isFinite || requiredMissing <= 0) continue;
 
       var alreadyListed = 0.0;
-      for (final item in [...planItems, ...pantryShoppingItems]) {
+      for (final item in buildShoppingList(plan.values, additionalItems: extra)) {
         if (item.ingredientId != missing.ingredient.ingredientId) continue;
-        final converted = planningQuantity(item.quantity, item.unit);
-        if (converted != null && converted.$2 == missing.unit)
-          alreadyListed += converted.$1;
+        if (item.unit == canonicalQuantityUnit(missing.unit)) {
+          alreadyListed += item.quantity;
+        }
       }
       final toAdd = ((requiredMissing - alreadyListed).clamp(
         0,
@@ -536,37 +536,47 @@ extension _PantryViews on _PlanningPageState {
       )).toDouble();
       if (toAdd <= 0) continue;
 
-      final existingIndex = pantryShoppingItems.indexWhere((item) {
-        if (item.ingredientId != missing.ingredient.ingredientId) return false;
-        final converted = planningQuantity(item.quantity, item.unit);
-        return converted != null && converted.$2 == missing.unit;
-      });
+      changed = true;
+      final existingIndex = extra.indexWhere((item) =>
+          item.ingredientId == missing.ingredient.ingredientId &&
+          item.unit == canonicalQuantityUnit(missing.unit));
       if (existingIndex >= 0) {
-        final existing = pantryShoppingItems[existingIndex];
-        pantryShoppingItems[existingIndex] = IngredientAmount(
+        final existing = extra[existingIndex];
+        extra[existingIndex] = IngredientAmount(
           existing.ingredientId,
           existing.name,
           existing.quantity + toAdd,
           existing.unit,
         );
       } else {
-        pantryShoppingItems.add(
+        extra.add(
           IngredientAmount(
             missing.ingredient.ingredientId,
             missing.ingredient.name,
             toAdd,
-            missing.unit == 'piece' ? 'Stück' : missing.unit,
+            canonicalQuantityUnit(missing.unit),
           ),
         );
       }
     }
-    savePreferences();
+    if (changed) {
+      final after = buildShoppingList(plan.values, additionalItems: extra);
+      final nextChecked = retainCheckedQuantities(before, after, checked);
+      if ((nextChecked.length != checked.length || !nextChecked.containsAll(checked)) &&
+          !await persist(Map<int, PlannedMeal>.from(plan), nextChecked)) {
+        return;
+      }
+      if (!mounted) return;
+      update(() => pantryShoppingItems..clear()..addAll(extra));
+      savePreferences();
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           match.missingCount == 0
               ? 'Dieses Rezept ist bereits vollständig.'
-              : 'Fehlmengen wurden zum Korb hinzugefügt.',
+              : changed ? 'Fehlmengen wurden zum Korb hinzugefügt.'
+              : 'Die Fehlmengen stehen bereits auf deiner Einkaufsliste.',
         ),
       ),
     );
@@ -582,7 +592,7 @@ extension _PantryViews on _PlanningPageState {
       Text(
         pantry.isEmpty
             ? 'Dein Vorrat ist leer.'
-            : 'Vorschläge aus deinem Vorrat für ${pantrySuggestionPortions} Personen.',
+            : 'Vorschläge aus deinem Vorrat für $pantrySuggestionPortions Personen.',
         style: muted,
       ),
       if (pantry.isEmpty) ...[

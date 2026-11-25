@@ -46,6 +46,7 @@ in dieser Reihenfolge ausführen:
 | `202611190002_curate_recipe_catalog.sql` | Geprüfte Kategorien für die 21 bestehenden öffentlichen Rezepte und zwei passende Bildzuordnungen |
 | `202611190003_recipe_photo_uploads.sql` | Öffentlicher Rezeptbildspeicher mit Größen-/Formatgrenzen und Uploadrecht für Rezept-Admins |
 | `202611190004_more_recipe_categories.sql` | Zehn weitere Rezeptkategorien; vorhandene Zuordnungen und Schutz vor widersprüchlichen Ernährungskategorien bleiben erhalten |
+| `202611250001_account_data_management.sql` | Persönlicher Dateiexport, privates Zurücksetzen mit Versionsschutz und geschützte Kontolöschung; siehe [Datenverwaltung](data-management.md) |
 
 Bei bestehenden Projekten zuerst prüfen, welche Migrationen bereits angewendet
 wurden. Die Dateien sind keine beliebig wiederholbaren Setup-Skripte.

@@ -3,8 +3,11 @@ part of 'planning_page.dart';
 extension _MiseViews on _PlanningPageState {
   String euro(double value) =>
       '${value.toStringAsFixed(2).replaceAll('.', ',')} €';
-  TextStyle get muted =>
-      const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.5);
+  TextStyle get muted => TextStyle(
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+    fontSize: 13,
+    height: 1.5,
+  );
   Widget gap([double size = 20]) => SizedBox(height: size);
   Widget title(String text) =>
       Text(text, style: Theme.of(context).textTheme.headlineMedium);
@@ -21,16 +24,23 @@ extension _MiseViews on _PlanningPageState {
   );
   Widget panel(
     Widget child, {
-    Color color = Colors.white,
+    Color? color,
     EdgeInsets padding = const EdgeInsets.all(18),
   }) => Container(
     width: double.infinity,
     padding: padding,
     decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(20),
+      color: color ?? Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     ),
-    child: Material(color: Colors.transparent, child: child),
+    child: Theme(
+      // Highlight cards retain their deliberate light background. Keep their
+      // inherited text readable even when the surrounding page uses dark mode.
+      data: color != null && color.computeLuminance() > .5
+          ? AppTheme.light
+          : Theme.of(context),
+      child: Material(color: Colors.transparent, child: child),
+    ),
   );
   Widget primary(
     String text,
@@ -47,6 +57,10 @@ extension _MiseViews on _PlanningPageState {
   void selectTab(int value) {
     final leavingCooking = cookingPage > 0;
     update(() {
+      if (value == 3 && tab != 3) {
+        shoppingExample = false;
+        shoppingPage = 0;
+      }
       tab = value;
       cookingPage = 0;
       openedRecipe = null;
@@ -56,13 +70,11 @@ extension _MiseViews on _PlanningPageState {
 
   bool get hasBottomAction =>
       cookingPage > 0 ||
-      (!readOnlyShared &&
+      (!readOnlyPlanning &&
           cookingPage == 0 &&
           (showPlanningAction ||
               showProposalAction ||
-              (tab == 3 &&
-                  shoppingPage != 1 &&
-                  (shoppingPage != 0 || cartHasItems)) ||
+              (tab == 3 && showShoppingAction) ||
               (tab == 2 && pantryPage != 0))) ||
       (cookingPage == 0 &&
           tab == 0 &&
@@ -80,7 +92,7 @@ extension _MiseViews on _PlanningPageState {
         : tab == 2 &&
               pantryPage == 0 &&
               cookingPage == 0 &&
-              !readOnlyShared &&
+              !readOnlyPlanning &&
               (pantry.isNotEmpty || preparedMeals.isNotEmpty)
         ? FloatingActionButton(
             tooltip: 'Vorrat hinzufügen',
@@ -130,7 +142,7 @@ extension _MiseViews on _PlanningPageState {
                 child: Builder(
                   builder: (contentContext) => ListView(
                     key: ValueKey(
-                      'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
+                      'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$shoppingExample-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
                     ),
                     padding: EdgeInsets.fromLTRB(
                       22,
@@ -150,7 +162,12 @@ extension _MiseViews on _PlanningPageState {
                               : recipeDetail(openedRecipe!),
                         if (readOnlyShared && tab >= 1 && tab <= 3)
                           ...sharedReadOnlyFlow(),
-                        if (!readOnlyShared && tab == 1) ...[
+                        if (!readOnlyShared &&
+                            cloudOffline &&
+                            tab >= 1 &&
+                            tab <= 2)
+                          ...offlinePlanningFlow(),
+                        if (!readOnlyPlanning && tab == 1) ...[
                           weekPicker(),
                           gap(16),
                           if (nextWeekHints.containsKey(dateKey(week))) ...[
@@ -176,7 +193,7 @@ extension _MiseViews on _PlanningPageState {
                           ],
                           ...planningFlow(),
                         ],
-                        if (!readOnlyShared && tab == 2) ...pantryFlow(),
+                        if (!readOnlyPlanning && tab == 2) ...pantryFlow(),
                         if (!readOnlyShared && tab == 3) ...shoppingFlow(),
                         if (tab == 4) ...householdFlow(),
                       ],
@@ -184,7 +201,8 @@ extension _MiseViews on _PlanningPageState {
                       if (tab != 0 &&
                           tab != 5 &&
                           !(tab == 2 && pantryPage == 0) &&
-                          !(tab == 3 && shoppingPage == 0) &&
+                          !(tab == 3 &&
+                              (shoppingPage == 0 || showingShoppingList)) &&
                           !(tab == 4 && householdPage == 0))
                         storageStatus(),
                       if (saving) const LinearProgressIndicator(),
@@ -219,14 +237,11 @@ extension _MiseViews on _PlanningPageState {
           if (cookingPage == 0) ...[
             if (tab == 0 && collectionPage > 0 && openedRecipe == null)
               recipeCollectionActionBar(),
-            if (!readOnlyShared && showPlanningAction) planningActionBar(),
-            if (!readOnlyShared && showProposalAction) proposalActionBar(),
-            if (!readOnlyShared &&
-                tab == 3 &&
-                shoppingPage != 1 &&
-                (shoppingPage != 0 || cartHasItems))
+            if (!readOnlyPlanning && showPlanningAction) planningActionBar(),
+            if (!readOnlyPlanning && showProposalAction) proposalActionBar(),
+            if (!readOnlyShared && tab == 3 && showShoppingAction)
               shoppingActionBar(),
-            if (!readOnlyShared && tab == 2 && pantryPage != 0)
+            if (!readOnlyPlanning && tab == 2 && pantryPage != 0)
               pantryActionBar(),
             if (tab == 4 &&
                 householdPage > 0 &&
@@ -243,6 +258,10 @@ extension _MiseViews on _PlanningPageState {
   List<Widget> recipeView() => recipeDiscoveryView();
 
   void toggleRecipePreference(Set<String> values, Recipe recipe) {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     update(() {
       if (!values.add(recipe.id)) values.remove(recipe.id);
     });
@@ -255,6 +274,10 @@ extension _MiseViews on _PlanningPageState {
   });
 
   void stopSuggestingRecipe(Recipe recipe) {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     update(() {
       hiddenRecipes.add(recipe.id);
       if (openedRecipe?.id == recipe.id) openedRecipe = null;
@@ -679,10 +702,12 @@ extension _MiseViews on _PlanningPageState {
           for (var stars = 1; stars <= 5; stars++)
             IconButton(
               tooltip: '$stars Sterne',
-              onPressed: () {
-                update(() => recipeRatings[recipe.id] = stars);
-                savePreferences();
-              },
+              onPressed: cloudOffline
+                  ? null
+                  : () {
+                      update(() => recipeRatings[recipe.id] = stars);
+                      savePreferences();
+                    },
               icon: Icon(
                 (recipeRatings[recipe.id] ?? 0) >= stars
                     ? Icons.star
@@ -691,16 +716,19 @@ extension _MiseViews on _PlanningPageState {
             ),
           if (recipeRatings.containsKey(recipe.id))
             TextButton(
-              onPressed: () {
-                update(() => recipeRatings.remove(recipe.id));
-                savePreferences();
-              },
+              onPressed: cloudOffline
+                  ? null
+                  : () {
+                      update(() => recipeRatings.remove(recipe.id));
+                      savePreferences();
+                    },
               child: const Text('Zurücksetzen'),
             ),
         ],
       ),
       TextFormField(
         key: ValueKey('recipe-note-${recipe.id}'),
+        enabled: !cloudOffline,
         initialValue: recipeNotes[recipe.id] ?? '',
         decoration: const InputDecoration(labelText: 'Private Notiz'),
         maxLines: 2,
@@ -710,7 +738,7 @@ extension _MiseViews on _PlanningPageState {
         },
       ),
       TextButton.icon(
-        onPressed: readOnlyShared ? null : () => editRecipeCost(recipe),
+        onPressed: readOnlyPlanning ? null : () => editRecipeCost(recipe),
         icon: const Icon(Icons.euro_outlined),
         label: Text(
           recipeCostEstimates.containsKey(recipe.id)
@@ -1098,6 +1126,13 @@ extension _MiseViews on _PlanningPageState {
     weekActionCard(),
     gap(18),
     primary('Wochenplan bearbeiten', editExistingPlan),
+    TextButton.icon(
+      onPressed: loading || saving || readOnlyPlanning
+          ? null
+          : reusePreviousWeek,
+      icon: const Icon(Icons.history),
+      label: const Text('Vorwoche als Entwurf verwenden'),
+    ),
     gap(12),
     Row(
       children: [
@@ -1332,26 +1367,35 @@ extension _MiseViews on _PlanningPageState {
   }
 
   List<Widget> selfShoppingView() {
-    final shopping = buildShoppingList(plan.values);
-    if (shopping.isEmpty && shoppingExample) return demoSelfShoppingView();
+    final shopping = shoppingBasketItems;
+    final stock = compareShoppingPantry(shopping, pantry, pantryToday);
+    if (shoppingExample) return demoSelfShoppingView();
     final done = shopping
         .where((i) => checked.contains((i.ingredientId, i.unit)))
         .length;
     return [
-      proposalBack(
-        'Zurück zum Warenkorb',
-        () => update(() => shoppingPage = 0),
-      ),
+      proposalBack('Zum Wochenplan', () => selectTab(1)),
       title('Deine Einkaufsliste'),
+      storageStatus(),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: copyShoppingList,
+          icon: const Icon(Icons.copy_outlined),
+          label: const Text('Einkaufsliste kopieren'),
+        ),
+      ),
       gap(8),
-      Text('${shopping.length} Zutaten · Für euren Wochenplan', style: muted),
+      Text('${shopping.length} Zutaten · Für deinen Wochenplan', style: muted),
       gap(20),
       panel(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Alles drin. Gut vorbereitet.',
+              done == shopping.length
+                  ? 'Alles erledigt. Bereit zum Kochen.'
+                  : '${shopping.length - done} Zutaten noch offen',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             gap(6),
@@ -1366,7 +1410,7 @@ extension _MiseViews on _PlanningPageState {
       gap(16),
       weekPicker(),
       gap(16),
-      section('Deine Einkaufsliste'),
+      section('Zutaten abhaken'),
       panel(
         Column(
           children: [
@@ -1380,7 +1424,7 @@ extension _MiseViews on _PlanningPageState {
                 child: const Text('Rezepte entdecken'),
               ),
             ],
-            for (final item in shopping)
+            for (final (index, item) in shopping.indexed)
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.trailing,
@@ -1394,9 +1438,15 @@ extension _MiseViews on _PlanningPageState {
                         : null,
                   ),
                 ),
-                subtitle: Text(
-                  '${item.quantity.toStringAsFixed(1)} ${item.unit}',
-                  style: muted,
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item.quantity.toStringAsFixed(1)} ${item.unit}',
+                      style: muted,
+                    ),
+                    Text(shoppingStockLabel(stock[index]), style: muted),
+                  ],
                 ),
                 value: checked.contains((item.ingredientId, item.unit)),
                 onChanged: saving || loading || loadError != null
@@ -1423,7 +1473,7 @@ extension _MiseViews on _PlanningPageState {
           children: [
             section('So wird aus Planung ein Einkauf'),
             Text(
-              'Prüfe deinen Vorrat vor dem Einkauf. Du kannst vorhandene Zutaten in der Liste abhaken.',
+              'Der Vorratsabgleich zeigt den heutigen Bestand mit vergleichbaren Mengen. Abgelaufene Einträge werden ausgelassen. Prüfe die Haltbarkeit vor Verwendung. Die benötigten Mengen bleiben sichtbar; es wird nichts automatisch abgezogen oder abgehakt.',
               style: muted,
             ),
           ],
@@ -1431,10 +1481,21 @@ extension _MiseViews on _PlanningPageState {
         color: AppColors.cream,
       ),
       gap(20),
-      budgetCard(compact: true),
-      gap(14),
+      primary(
+        'Heutiges Gericht kochen',
+        openTodayCooking,
+        icon: Icons.restaurant_outlined,
+      ),
+      gap(12),
+      TextButton(
+        onPressed: () => update(() {
+          shoppingExample = true;
+          shoppingPage = 0;
+        }),
+        child: const Text('Händlervergleich ansehen · Demo'),
+      ),
       Text(
-        'Preise und Händlerangebote sind noch nicht verbunden.',
+        'Der Händlervergleich verwendet Beispieldaten und verändert deine Einkaufsliste nicht.',
         style: muted,
       ),
     ];
@@ -1613,6 +1674,10 @@ extension _MiseViews on _PlanningPageState {
                           : 'Nicht gespeichert'
                     : loading
                     ? 'Wird geladen …'
+                    : loadError != null
+                    ? 'Nicht geladen'
+                    : cloudOffline
+                    ? 'Offline auf diesem Gerät gespeichert'
                     : 'Gespeichert',
                 key: const ValueKey('save-status'),
                 style: muted,

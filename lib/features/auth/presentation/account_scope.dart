@@ -93,6 +93,9 @@ class _AccountScopeState extends State<AccountScope> {
       try {
         await widget.client.auth.recoverSession(saved);
       } on AuthRetryableFetchException {
+        // Preserve the known local identity for cached data only. Server writes
+        // still require a refreshed, valid Supabase session.
+        await widget.client.auth.setInitialSession(saved);
         error = 'Die Sitzung konnte wegen eines Verbindungsfehlers nicht erneuert werden. Deine gespeicherte Anmeldung bleibt erhalten.';
       } on AuthException {
         persistSession(widget.storageKey, null);

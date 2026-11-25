@@ -183,6 +183,10 @@ extension _RecipeCollectionViews on _PlanningPageState {
   }
 
   void editPersonalRecipe([Map<String, dynamic>? record]) {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     final recipe = record == null
         ? null
         : recipeFromSnapshot(
@@ -460,6 +464,10 @@ extension _RecipeCollectionViews on _PlanningPageState {
   }
 
   void savePersonalRecipe() {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     final name = (personalRecipeDraft['name'] as String).trim();
     final portions = int.tryParse(personalRecipeDraft['servings'] as String);
     final minutes = int.tryParse(personalRecipeDraft['minutes'] as String);

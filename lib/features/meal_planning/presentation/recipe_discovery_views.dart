@@ -56,6 +56,7 @@ extension _RecipeDiscovery on _PlanningPageState {
   );
 
   Widget recipeDiscoveryControls() {
+    if (cloudOffline) return const SizedBox.shrink();
     final colors = Theme.of(context).colorScheme;
     Widget action(String tooltip, IconData icon, VoidCallback? onPressed) =>
         Material(

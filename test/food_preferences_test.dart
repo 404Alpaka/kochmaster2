@@ -50,6 +50,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(ChoiceChip, 'Vegetarisch'));
       await tester.pumpAndSettle();
+      final peanuts = find.widgetWithText(FilterChip, 'Erdnüsse');
+      await reveal(tester, peanuts);
+      await tester.tap(peanuts);
+      await tester.pumpAndSettle();
       final more = find.byTooltip('Mehr Personen');
       await reveal(tester, more);
       await tester.tap(more);
@@ -76,6 +80,8 @@ void main() {
             .selected,
         isTrue,
       );
+      await reveal(tester, peanuts);
+      expect(tester.widget<FilterChip>(peanuts).selected, isTrue);
       final restored = find.byKey(const ValueKey('food-preferences-budget'));
       await reveal(tester, restored);
       expect(tester.widget<TextFormField>(restored).controller!.text, '85,50');

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../features/recipes/domain/recipe.dart';
+import '../features/recipes/data/cached_recipe_repository.dart';
 
 class RecipeLoader extends StatefulWidget {
   const RecipeLoader({
@@ -27,10 +28,46 @@ class _RecipeLoaderState extends State<RecipeLoader> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<Recipe>>(
+  Widget build(BuildContext context) {
+    final repository = widget.repository;
+    return repository is CachedRecipeRepository
+        ? ValueListenableBuilder<CatalogSnapshot?>(
+            valueListenable: repository.snapshot,
+            builder: (context, cached, _) => contents(cached),
+          )
+        : contents(null);
+  }
+
+  Widget contents(CatalogSnapshot? cached) => FutureBuilder<List<Recipe>>(
     future: result,
     builder: (context, snapshot) {
-      if (snapshot.hasData) return widget.builder(snapshot.data!);
+      final recipes = cached?.recipes ?? snapshot.data;
+      if (recipes != null) {
+        return Column(
+          children: [
+            if (cached?.offline == true)
+              MaterialBanner(
+                content: const Text(
+                  'Rezepte sind offline verfügbar. Angezeigt wird der zuletzt gespeicherte Katalog; Bilder können fehlen.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        await (widget.repository as CachedRecipeRepository)
+                            .refresh();
+                      } catch (_) {
+                        /* Keep the last usable catalog visible. */
+                      }
+                    },
+                    child: const Text('Aktualisieren'),
+                  ),
+                ],
+              ),
+            Expanded(child: widget.builder(recipes)),
+          ],
+        );
+      }
       return Scaffold(
         appBar: AppBar(title: const Text('Kochmaster')),
         body: Center(

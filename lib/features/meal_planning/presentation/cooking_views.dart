@@ -592,15 +592,28 @@ extension _CookingViews on _PlanningPageState {
 
   void prepareCookingReview() {
     cookingUses.clear();
-    for (final ingredient in cookingIngredients) {
+    final ingredients = cookingIngredients;
+    for (final ingredient in ingredients) {
       var needed = ingredient.quantity;
       for (final item in pantry) {
         final parsed = pantryAmount(item);
+        final id = item['ingredientId'] as String?;
+        final name = pantryName(item['name'] as String);
+        final matchesIngredient = id != null
+            ? id == ingredient.ingredientId
+            : name == pantryName(ingredient.name) &&
+                  ingredients
+                          .where((i) => pantryName(i.name) == name)
+                          .map((i) => i.ingredientId)
+                          .toSet()
+                          .length ==
+                      1;
         if (parsed == null ||
-            pantryName(item['name'] as String) != pantryName(ingredient.name) ||
+            !matchesIngredient ||
             parsed.$2.toLowerCase() != ingredient.unit.toLowerCase() ||
-            needed <= 0)
+            needed <= 0) {
           continue;
+        }
         _CookingUse? previous;
         for (final use in cookingUses) {
           if (identical(use.item, item)) previous = use;
@@ -658,11 +671,12 @@ extension _CookingViews on _PlanningPageState {
           ),
           TextButton(
             onPressed: () {
-              if (form.currentState!.validate())
+              if (form.currentState!.validate()) {
                 Navigator.pop(
                   context,
                   double.parse(value.replaceAll(',', '.')),
                 );
+              }
             },
             child: const Text('Übernehmen'),
           ),
@@ -700,7 +714,7 @@ extension _CookingViews on _PlanningPageState {
           ),
           if (cookingUses.isEmpty)
             Text(
-              'Keine vorhandenen Vorräte eindeutig nach Name und Einheit zugeordnet. Es werden keine Mengen abgezogen.',
+              'Keine vorhandenen Vorräte eindeutig mit vergleichbaren Mengen zugeordnet. Es werden keine Mengen abgezogen.',
               style: muted,
             ),
           for (final use in cookingUses) ...[
@@ -721,7 +735,7 @@ extension _CookingViews on _PlanningPageState {
             gap(12),
           ],
           Text(
-            'Nur vorhandene Mengen mit gleicher Einheit werden vorgeschlagen. Fehlende Zutaten oder andere Einheiten werden nicht automatisch abgezogen.',
+            'Vergleichbare Mengen werden umgerechnet, zum Beispiel Kilogramm in Gramm. Fehlende Zutaten und unbekannte Packungsinhalte werden nicht automatisch abgezogen.',
             style: muted,
           ),
         ],
@@ -798,6 +812,10 @@ extension _CookingViews on _PlanningPageState {
   ];
 
   void saveCookingResult() {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     if (cookedEntries.contains(cookingKey)) return;
     if (deductCookingStock &&
         cookingUses.any(
@@ -817,7 +835,7 @@ extension _CookingViews on _PlanningPageState {
       return;
     }
     update(() {
-      if (deductCookingStock)
+      if (deductCookingStock) {
         for (final use in cookingUses) {
           final remaining = pantryAmount(use.item)!.$1 - use.used;
           if (remaining <= 0) {
@@ -826,7 +844,8 @@ extension _CookingViews on _PlanningPageState {
             use.item['amount'] = amountLabel(remaining, use.unit);
           }
         }
-      if (remainingCookedPortions > 0)
+      }
+      if (remainingCookedPortions > 0) {
         preparedMeals.add({
           'id': 'cooked-${DateTime.now().microsecondsSinceEpoch}',
           'name': cookingRecipe!.name,
@@ -836,6 +855,7 @@ extension _CookingViews on _PlanningPageState {
           'cookedOn': dateKey(cookedOn ?? pantryToday),
           'recipe': recipeSnapshot(cookingRecipe!),
         });
+      }
       cookingHistory.add({
         'key': cookingKey,
         'date': dateKey(cookedOn ?? pantryToday),
@@ -883,6 +903,7 @@ extension _CookingViews on _PlanningPageState {
                 child: FilledButton(
                   onPressed:
                       alreadyCooked ||
+                          (cloudOffline && cookingPage == 3) ||
                           (cookingPage == 1 && cookingRecipe!.steps.isEmpty)
                       ? null
                       : () {
@@ -904,7 +925,11 @@ extension _CookingViews on _PlanningPageState {
                         },
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 56)),
                   child: Text(
-                    alreadyCooked ? 'Bereits gekocht ✓' : label,
+                    alreadyCooked
+                        ? 'Bereits gekocht ✓'
+                        : cloudOffline && cookingPage == 3
+                        ? 'Zum Speichern verbinden'
+                        : label,
                     textAlign: TextAlign.center,
                   ),
                 ),

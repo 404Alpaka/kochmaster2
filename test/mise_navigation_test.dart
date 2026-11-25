@@ -38,32 +38,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Profil'), findsOneWidget);
-    await reveal(tester, find.text('Budget'));
-    await tester.tap(find.text('Budget'));
+    await reveal(tester, find.text('Essenspräferenzen'));
+    await tester.tap(find.text('Essenspräferenzen'));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    await tester.enterText(find.byType(TextFormField).at(0), '90');
-    await tester.enterText(find.byType(TextFormField).at(1), '20');
-    await tester.tap(find.text('Speichern'));
+    final budget = find.byKey(const ValueKey('food-preferences-budget'));
+    await reveal(tester, budget);
+    await tester.enterText(budget, '90');
+    await tester.tap(find.text('Präferenzen übernehmen'));
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Budget'));
+    await reveal(tester, find.text('Essenspräferenzen'));
+    await tester.tap(find.text('Essenspräferenzen'));
     await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<TextFormField>(find.byType(TextFormField).at(0))
-          .controller!
-          .text,
-      '90,00',
-    );
-    expect(
-      tester
-          .widget<TextFormField>(find.byType(TextFormField).at(1))
-          .controller!
-          .text,
-      '20,00',
-    );
-    await tester.tap(find.text('Abbrechen'));
+    await reveal(tester, budget);
+    expect(tester.widget<TextFormField>(budget).controller!.text, '90,00');
+    await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Korb'));
     await tester.pumpAndSettle();

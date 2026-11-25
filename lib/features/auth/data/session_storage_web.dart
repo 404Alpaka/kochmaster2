@@ -1,5 +1,7 @@
 import 'package:web/web.dart' as web;
+
 import 'auth_callback_uri.dart';
+import '../../../core/local_store.dart';
 
 String? readSession(String key) {
   try {
@@ -17,14 +19,21 @@ void writeSession(String key, String? session) {
       web.window.localStorage.setItem(key, session);
     }
   } catch (_) {
-    /* Private browsing may disable storage; login still works. */
+    LocalStore.instance.issue.value = 'Änderungen konnten nicht im Browser gespeichert werden. Bitte prüfe die Website-Daten.';
   }
 }
 
 String? authCallbackCode() => Uri.base.queryParameters['code'];
+
+// Destructive actions must surface a storage failure instead of claiming success.
+Future<void> removeSessionValues(Iterable<String> keys) async {
+  for (final key in keys) {
+    web.window.localStorage.removeItem(key);
+  }
+}
+
 String? authCallbackError() => authErrorFromUri(Uri.base);
-String? authRedirectUrl() =>
-    authReturnAddress(Uri.base);
+String? authRedirectUrl() => authReturnAddress(Uri.base);
 void clearAuthCallback() {
   web.window.history.replaceState(
     null,

@@ -1,17 +1,50 @@
 part of 'planning_page.dart';
 
 extension _ConnectedHouseholdViews on _PlanningPageState {
-  List<PlanningDiner> get planningDiners => activeHousehold == null ? [] : [
-    for(final member in activeHousehold!.members) PlanningDiner.fromJson(member['user_id'] as String, member['email'] as String? ?? 'Mitglied', householdDinerRules[member['user_id']] ?? {}),
-    for(final entry in householdDinerRules.entries.where((e)=>e.key.startsWith('guest:'))) PlanningDiner.fromJson(entry.key,entry.value['name'] as String? ?? 'Weitere Person',entry.value),
-  ];
+  List<PlanningDiner> get planningDiners => activeHousehold == null
+      ? []
+      : [
+          for (final member in activeHousehold!.members)
+            PlanningDiner.fromJson(
+              member['user_id'] as String,
+              member['email'] as String? ?? 'Mitglied',
+              householdDinerRules[member['user_id']] ?? {},
+            ),
+          for (final entry in householdDinerRules.entries.where(
+            (e) => e.key.startsWith('guest:'),
+          ))
+            PlanningDiner.fromJson(
+              entry.key,
+              entry.value['name'] as String? ?? 'Weitere Person',
+              entry.value,
+            ),
+        ];
 
   Future<void> editPlanningDiners() async {
-    if(activeHousehold == null) return;
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
+    if (activeHousehold == null) return;
     final target = activeHouseholdId;
-    final result = await Navigator.of(context).push<List<PlanningDiner>>(MaterialPageRoute(builder:(_)=>HouseholdDinersPage(initial:planningDiners,readOnly:readOnlyShared)));
-    if(result == null || !mounted || readOnlyShared || activeHouseholdId != target) return;
-    update(() { householdDinerRules..clear()..addAll({for(final d in result) d.id:d.toJson()}); });
+    final result = await Navigator.of(context).push<List<PlanningDiner>>(
+      MaterialPageRoute(
+        builder: (_) => HouseholdDinersPage(
+          initial: planningDiners,
+          readOnly: readOnlyShared,
+        ),
+      ),
+    );
+    if (result == null ||
+        !mounted ||
+        readOnlyShared ||
+        activeHouseholdId != target)
+      return;
+    update(() {
+      householdDinerRules
+        ..clear()
+        ..addAll({for (final d in result) d.id: d.toJson()});
+    });
     savePreferences();
   }
 
@@ -272,13 +305,17 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          section('Planungsbereich', action: IconButton(
-            tooltip: 'Kontodaten aktualisieren',
-            onPressed: accountPending > 0 || saving || loading || householdBusy
-                ? null
-                : reloadAccountData,
-            icon: const Icon(Icons.refresh, size: 20),
-          )),
+          section(
+            'Planungsbereich',
+            action: IconButton(
+              tooltip: 'Kontodaten aktualisieren',
+              onPressed:
+                  accountPending > 0 || saving || loading || householdBusy
+                  ? null
+                  : reloadAccountData,
+              icon: const Icon(Icons.refresh, size: 20),
+            ),
+          ),
           DropdownButtonFormField<String>(
             key: ValueKey('account-scope-${activeHouseholdId ?? 'private'}'),
             initialValue: activeHouseholdId ?? 'private',
@@ -342,7 +379,8 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       gap(16),
     ],
     if (activeHousehold != null) ...[
-      recipeAction('Mitessende & feste Regeln',false,editPlanningDiners), gap(16),
+      recipeAction('Mitessende & feste Regeln', false, editPlanningDiners),
+      gap(16),
       section(activeHousehold!.name),
       Text(
         'Deine Rolle: ${householdRoleLabel(activeHousehold!.role)}',
@@ -420,8 +458,14 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
         ),
         gap(12),
         recipeAction('Gemeinsames Budget bearbeiten', false, editBudget),
-        gap(12), recipeAction('Ausschlüsse & Abneigungen', false, () => householdGo(7)),
-        gap(12), recipeAction('Gemeinsamer Wochenrückblick', false, () => householdGo(11)),
+        gap(12),
+        recipeAction('Ausschlüsse & Abneigungen', false, () => householdGo(7)),
+        gap(12),
+        recipeAction(
+          'Gemeinsamer Wochenrückblick',
+          false,
+          () => householdGo(11),
+        ),
         gap(18),
       ],
       recipeAction('Gemeinsamen Wochenplan öffnen', false, () => selectTab(1)),
@@ -434,17 +478,9 @@ extension _ConnectedHouseholdViews on _PlanningPageState {
       ),
       gap(20),
     ] else ...[
-      recipeAction(
-        'Essenspräferenzen & Planung',
-        false,
-        editFoodPreferences,
-      ),
+      recipeAction('Essenspräferenzen & Planung', false, editFoodPreferences),
       gap(12),
-      recipeAction(
-        'Ausschlüsse & Abneigungen',
-        false,
-        () => householdGo(7),
-      ),
+      recipeAction('Ausschlüsse & Abneigungen', false, () => householdGo(7)),
       gap(12),
       recipeAction('Wochenrückblick', false, () => householdGo(11)),
       gap(20),

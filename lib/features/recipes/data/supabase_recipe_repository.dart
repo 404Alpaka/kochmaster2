@@ -20,13 +20,13 @@ class SupabaseRecipeRepository implements RecipeRepository {
     try {
       final values = await client
           .rpc('recipe_popularity')
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 2));
       for (final value in values as List) {
         counts[value['recipe_id'] as String] = (value['favorite_count'] as num)
             .toInt();
       }
-    } on PostgrestException catch (error) {
-      if (!['PGRST202', '42883'].contains(error.code)) rethrow;
+    } catch (_) {
+      // Popularity is optional. Its endpoint must not block the recipe catalog.
     }
     return rows
         .map((row) => recipeFromRow(row, favoriteCount: counts[row['id']] ?? 0))

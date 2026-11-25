@@ -4,6 +4,8 @@ import '../core/theme/app_theme.dart';
 import '../features/auth/data/session_storage.dart';
 
 import '../features/recipes/data/demo_recipe_repository.dart';
+import '../features/recipes/data/cached_recipe_repository.dart';
+import '../core/local_store.dart';
 import 'recipe_loader.dart';
 
 import 'package:supabase/supabase.dart';
@@ -22,9 +24,27 @@ class KochmasterApp extends StatefulWidget {
 }
 
 class _KochmasterAppState extends State<KochmasterApp> {
+  late final RecipeRepository? repository = widget.repository == null
+      ? null
+      : CachedRecipeRepository(
+          widget.repository!,
+          project: widget.client?.rest.url ?? 'local',
+        );
+  bool storageReady = LocalStore.instance.initialized;
   @override
   void initState() {
     super.initState();
+    if (!storageReady) {
+      LocalStore.instance.initialize().then((_) {
+        if (!mounted) return;
+        setState(() {
+          storageReady = true;
+          appThemeMode.value = readSession('mise-theme-mode') == 'dark'
+              ? ThemeMode.dark
+              : ThemeMode.light;
+        });
+      });
+    }
     appThemeMode.value = readSession('mise-theme-mode') == 'dark'
         ? ThemeMode.dark
         : ThemeMode.light;
@@ -39,13 +59,33 @@ class _KochmasterAppState extends State<KochmasterApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: mode,
-      home: widget.client != null
+      builder: (context, child) => ValueListenableBuilder<String?>(
+        valueListenable: LocalStore.instance.issue,
+        builder: (context, issue, _) => Column(
+          children: [
+            if (issue != null)
+              MaterialBanner(
+                content: Text(issue),
+                actions: [
+                  TextButton(
+                    onPressed: () => LocalStore.instance.issue.value = null,
+                    child: const Text('Schließen'),
+                  ),
+                ],
+              ),
+            Expanded(child: child ?? const SizedBox()),
+          ],
+        ),
+      ),
+      home: !storageReady
+          ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+          : widget.client != null
           ? AccountScope(
               client: widget.client!,
               storageKey: 'kochmaster-${widget.client!.rest.url}-session',
               builder: (user) => _AccountCatalog(
                 key: ValueKey((widget.client, user?.id)),
-                repository: widget.repository!,
+                repository: repository!,
                 client: widget.client!,
                 user: user,
               ),
@@ -53,7 +93,7 @@ class _KochmasterAppState extends State<KochmasterApp> {
           : widget.repository == null
           ? PlanningPage(recipes: DemoRecipeRepository().getAll(), isDemo: true)
           : RecipeLoader(
-              repository: widget.repository!,
+              repository: repository!,
               builder: (recipes) =>
                   PlanningPage(recipes: recipes, isDemo: false),
             ),

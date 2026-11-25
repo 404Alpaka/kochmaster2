@@ -34,7 +34,8 @@ Prüfung und Web-Build:
 flutter analyze
 flutter test
 flutter test test/supabase_live_test.dart --dart-define=RUN_LIVE_TESTS=true
-flutter build web
+flutter build web --no-wasm-dry-run --no-web-resources-cdn
+node tool/prepare_offline_web.mjs
 ```
 
 Der Live-Test benötigt Netzwerk und liest nur den öffentlichen Katalog.
@@ -54,3 +55,12 @@ Kontoweite persönliche Daten und echte Haushalte: [docs/households.md](docs/hou
 Bei neuer Einrichtung alle Migrationen gemäß [Datenbankeinrichtung](docs/database.md)
 anwenden. Die App führt Migrationen nicht automatisch aus.
 Haushalte teilen Plan, Einkauf und Vorrat; persönliche Favoriten und Regeln bleiben privat.
+
+Datenexport und getrennte Löschaktionen: [Datenverwaltung](docs/data-management.md).
+Weitere Überarbeitungsthemen einschließlich wiederkehrender wöchentlicher
+Einkäufe: [Aufgabenliste](docs/overhaul-roadmap.md).
+
+Rezepte, geladene Wochenpläne und Vorrat sind nach dem ersten Laden offline
+verfügbar. Einkaufshäkchen werden lokal gesichert und später mit dem Cloudstand
+abgeglichen. Gastdaten und Einstellungen bleiben auch auf Mobilgeräten dauerhaft
+erhalten. Umfang und Grenzen: [Offline-Nutzung](docs/offline.md).

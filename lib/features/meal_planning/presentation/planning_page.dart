@@ -8,6 +8,9 @@ import '../../auth/data/session_storage.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/quantities.dart';
+import '../../../core/connection_failure.dart';
+import '../data/offline_cache.dart';
 import 'app_bottom_navigation.dart';
 import 'food_preferences_page.dart';
 import 'recipe_category_icon.dart';
@@ -28,6 +31,7 @@ import '../domain/receipt_parser.dart';
 import '../domain/meal_plan.dart';
 import '../domain/weekly_planner.dart';
 import '../domain/planning_resources.dart';
+import '../../shopping/domain/shopping_pantry.dart';
 import '../domain/cooking_timer.dart';
 import '../domain/cooking_progress.dart';
 import '../../../core/cooking_runtime.dart';
@@ -36,6 +40,8 @@ import 'household_diners_page.dart';
 import '../../recipes/domain/recipe.dart';
 import '../../recipes/presentation/recipe_image.dart';
 import '../../account_data/data/account_data_repository.dart';
+import '../../account_data/data/account_data_management_repository.dart';
+import '../../account_data/data/account_data_exporter.dart';
 import '../../households/data/household_repository.dart';
 
 import 'package:flutter/services.dart'
@@ -47,9 +53,11 @@ import '../domain/pantry_recipe_matcher.dart';
 part 'mise_views.dart';
 part 'home_views.dart';
 part 'profile_views.dart';
+part 'data_management_views.dart';
 part 'week_action_card.dart';
 part 'recipe_discovery_views.dart';
 part 'account_sync.dart';
+part 'offline_views.dart';
 part 'connected_household_views.dart';
 part 'planning_survey.dart';
 part 'planning_budget_demo.dart';
@@ -74,11 +82,13 @@ class PlanningPage extends StatefulWidget {
     this.user,
     this.store,
     this.adminRepository,
+    this.dataExporter = const AccountDataExporter(),
   });
   final SupabaseClient? client;
   final User? user;
   final WeeklyPlanRepository? store;
   final AdminRecipeRepository? adminRepository;
+  final AccountDataExporter dataExporter;
   final List<Recipe> recipes;
   final bool isDemo;
   @override
@@ -282,10 +292,21 @@ class _PlanningPageState extends State<PlanningPage> {
   int sharedRevision = 0;
   bool accountLoading = false;
   bool accountReady = false;
+  bool accountOffline = false;
+  bool weekOffline = false;
+  String? offlineNotice;
+  bool get cloudOffline => accountOffline || weekOffline;
+  bool get readOnlyPlanning => readOnlyShared || cloudOffline;
+  late final offlineCache = OfflineCache(
+    project: widget.client?.rest.url ?? (widget.isDemo ? 'demo' : 'local'),
+    user: widget.user?.id ?? 'guest',
+  );
+  String get offlineScope => activeHouseholdId ?? 'private';
   String? accountError;
   int accountPending = 0;
   Future<void> accountSaveTail = Future.value();
   bool householdBusy = false;
+  bool dataActionBusy = false;
   String? householdError;
 
   String get preferencesKey => 'mise-preferences-${widget.user?.id ?? 'guest'}';
@@ -354,6 +375,10 @@ class _PlanningPageState extends State<PlanningPage> {
     final data = preferencesData();
     if (!accountConnected) {
       writeSession(preferencesKey, jsonEncode(data));
+      return;
+    }
+    if (cloudOffline) {
+      offlineEditMessage();
       return;
     }
     if (!accountReady || accountLoading || accountError != null) return;
@@ -557,7 +582,10 @@ class _PlanningPageState extends State<PlanningPage> {
       initializeAccountData();
     } else {
       unawaited(restoreCookingProgress());
-      if (weekRepository != null) loadWeek();
+      if (weekRepository == null) {
+        localWeekCache.addAll(offlineCache.readWeeks(offlineScope));
+      }
+      loadWeek();
     }
     if (widget.adminRepository != null) {
       admin = true;
@@ -610,7 +638,7 @@ class _PlanningPageState extends State<PlanningPage> {
       saveError = null;
     });
     try {
-      final result = await weekRepository!.load(week, recipes);
+      final result = await loadAvailableWeek();
       if (!mounted) return;
       setState(() {
         saved = true;
@@ -619,7 +647,13 @@ class _PlanningPageState extends State<PlanningPage> {
           ..addAll(result.meals);
         checked
           ..clear()
-          ..addAll(result.checked);
+          ..addAll(
+            normalizeCheckedItems(
+              result.meals.values,
+              result.checked,
+              additionalItems: pantryShoppingItems,
+            ),
+          );
         weekConflict = false;
         weekSaveUncertain = false;
         draft = null;
@@ -681,11 +715,32 @@ class _PlanningPageState extends State<PlanningPage> {
       saving = true;
       saveError = null;
     });
+    final normalizedChecked = normalizeCheckedItems(
+      nextPlan.values,
+      nextChecked,
+      additionalItems: pantryShoppingItems,
+    );
     try {
+      if (cloudOffline) {
+        return await saveOfflineChecks(nextPlan, normalizedChecked);
+      }
+      if (weekRepository == null) {
+        await offlineCache.saveWeek(
+          week,
+          offlineScope,
+          WeeklyPlan(meals: nextPlan, checked: normalizedChecked),
+          extras: pantryShoppingItems,
+        );
+      }
       await weekRepository?.save(
         week,
-        WeeklyPlan(meals: nextPlan, checked: nextChecked),
+        WeeklyPlan(meals: nextPlan, checked: normalizedChecked),
       );
+      if (weekRepository != null) {
+        await cacheWeekSafely(
+          WeeklyPlan(meals: nextPlan, checked: normalizedChecked),
+        );
+      }
       if (!mounted) return false;
       setState(() {
         saved = true;
@@ -694,12 +749,17 @@ class _PlanningPageState extends State<PlanningPage> {
           ..addAll(nextPlan);
         checked
           ..clear()
-          ..addAll(nextChecked);
+          ..addAll(normalizedChecked);
       });
       syncPreparedReservations(week, nextPlan);
       savePreferences();
       return true;
     } catch (error) {
+      if (isConnectionFailure(error) &&
+          error is! TimeoutException &&
+          offlineCache.readWeek(week, offlineScope) != null) {
+        if (await saveOfflineChecks(nextPlan, normalizedChecked)) return true;
+      }
       if (mounted) {
         setState(() {
           weekSaveUncertain = error is TimeoutException;
@@ -731,7 +791,7 @@ class _PlanningPageState extends State<PlanningPage> {
   }
 
   Future<void> changeWeek(int delta) async {
-    if (saving || loading || delta == 0) return;
+    if (saving || loading || preparedBusy || delta == 0) return;
     if (draft != null) {
       final discard = await showDialog<bool>(
         context: context,
@@ -778,17 +838,7 @@ class _PlanningPageState extends State<PlanningPage> {
       plan.clear();
       checked.clear();
     });
-    if (weekRepository != null) {
-      await loadWeek();
-    } else {
-      final cached = localWeekCache[dateKey(week)];
-      if (cached != null) {
-        update(() {
-          plan.addAll(cached.meals);
-          checked.addAll(cached.checked);
-        });
-      }
-    }
+    await loadWeek();
     if (mounted &&
         previousSurveyStep > 0 &&
         previousSurveyStep <= 5 &&
@@ -798,6 +848,10 @@ class _PlanningPageState extends State<PlanningPage> {
   }
 
   Future<void> addRecipe(Recipe recipe, {int? portions}) async {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
     if (readOnlyShared) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -866,8 +920,15 @@ class _PlanningPageState extends State<PlanningPage> {
     );
   }
 
-  Future<bool> saveMeals(Map<int, PlannedMeal> next) =>
-      persist(next, retainCheckedItems(plan.values, next.values, checked));
+  Future<bool> saveMeals(Map<int, PlannedMeal> next) => persist(
+    next,
+    retainCheckedItems(
+      plan.values,
+      next.values,
+      checked,
+      additionalItems: pantryShoppingItems,
+    ),
+  );
 
   Future<void> adjustServings(int day, int delta) async {
     final meal = plan[day];
@@ -909,6 +970,47 @@ class _PlanningPageState extends State<PlanningPage> {
   });
 
   @override
-  Widget build(BuildContext context) =>
-      accountConnected ? accountDataScaffold() : miseScaffold();
+  Widget build(BuildContext context) => PopScope(
+    canPop:
+        !dataActionBusy &&
+        !preparedBusy &&
+        tab == 5 &&
+        cookingPage == 0 &&
+        openedRecipe == null,
+    onPopInvokedWithResult: (didPop, _) {
+      if (didPop) return;
+      if (dataActionBusy || preparedBusy) return;
+      if (cookingPage > 0) {
+        // Leaving the cooking view keeps its persisted progress available.
+        selectTab(5);
+      } else if (openedRecipe != null) {
+        update(() => openedRecipe = null);
+      } else if (tab == 2 && pantryPage != 0) {
+        update(() => pantryPage = 0);
+      } else if (tab == 3 && (shoppingExample || shoppingPage != 0)) {
+        update(() {
+          shoppingExample = false;
+          shoppingPage = 0;
+        });
+      } else {
+        // Draft plans stay in state and can be resumed from the Plan tab.
+        selectTab(5);
+      }
+    },
+    child: Stack(
+      children: [
+        AbsorbPointer(
+          absorbing: dataActionBusy || preparedBusy,
+          child: accountConnected ? accountDataScaffold() : miseScaffold(),
+        ),
+        if (dataActionBusy)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(),
+          ),
+      ],
+    ),
+  );
 }

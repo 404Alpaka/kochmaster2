@@ -1,6 +1,89 @@
 part of 'planning_page.dart';
 
 extension _PlanningProposal on _PlanningPageState {
+  Future<void> reusePreviousWeek() async {
+    if (loading || saving || readOnlyPlanning || draft != null) return;
+    final target = dateKey(week);
+    final scope = activeHouseholdId;
+    final previous = DateTime(week.year, week.month, week.day - 7);
+    update(() => loading = true);
+    WeeklyPlan? source;
+    try {
+      source = weekRepository != null
+          ? await weekRepository!.load(previous, recipes)
+          : localWeekCache[dateKey(previous)];
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Die Vorwoche konnte nicht geladen werden. Bitte erneut versuchen.',
+            ),
+          ),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) update(() => loading = false);
+    }
+    if (!mounted || dateKey(week) != target || activeHouseholdId != scope) {
+      return;
+    }
+    final meals = <int, PlannedMeal>{
+      for (final entry
+          in source?.meals.entries ?? <MapEntry<int, PlannedMeal>>[])
+        if (entry.value.preparedMealId == null)
+          entry.key: PlannedMeal(entry.value.recipe, entry.value.servings),
+    };
+    if (meals.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'In der Vorwoche sind keine erneut planbaren Gerichte gespeichert. Restportionen werden nicht kopiert.',
+          ),
+        ),
+      );
+      return;
+    }
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Vorwoche erneut planen?'),
+        content: Text(
+          '${meals.length} Gerichte mit ihren Portionen werden als Entwurf für ${displayDate(week)} übernommen. Beim Bestätigen ersetzt der Entwurf den bisherigen Plan. Einkaufsstatus, Kochstatus und reservierte Restportionen werden nicht kopiert. Wiederholungen sind für diesen Entwurf ausdrücklich erlaubt; deine festen Regeln werden beim Bestätigen geprüft.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Entwurf erstellen'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true ||
+        !mounted ||
+        dateKey(week) != target ||
+        activeHouseholdId != scope ||
+        readOnlyPlanning) {
+      return;
+    }
+    update(() {
+      draft = meals;
+      editingPlan = true;
+      proposalConfirmed = false;
+      allowPlanRepeats = true;
+      plannerResult = null;
+      acceptedDays.clear();
+      changedProposalDays
+        ..clear()
+        ..addAll(meals.keys);
+    });
+  }
+
   Future<bool> editPlannerResources() async {
     var useStock = usePlanningStock;
     String? costClass =
@@ -64,7 +147,7 @@ extension _PlanningProposal on _PlanningPageState {
         ),
       ),
     );
-    if (result != true || !mounted || readOnlyShared) return false;
+    if (result != true || !mounted || readOnlyPlanning) return false;
     update(() {
       usePlanningStock = useStock;
       budgetCostClass = costClass;
@@ -74,7 +157,7 @@ extension _PlanningProposal on _PlanningPageState {
   }
 
   Future<void> editRecipeCost(Recipe recipe) async {
-    if (readOnlyShared) return;
+    if (readOnlyPlanning) return;
     var value =
         recipeCostEstimates[recipe.id]
             ?.toStringAsFixed(2)
@@ -128,7 +211,7 @@ extension _PlanningProposal on _PlanningPageState {
         ],
       ),
     );
-    if (accepted != true || !mounted || readOnlyShared) return;
+    if (accepted != true || !mounted || readOnlyPlanning) return;
     update(() {
       if (value.trim().isEmpty) {
         recipeCostEstimates.remove(recipe.id);
@@ -249,6 +332,17 @@ extension _PlanningProposal on _PlanningPageState {
       ),
     gap(14),
     title('Deine Woche. Dein Mix.'),
+    ExpansionTile(
+      title: const Text('Warum diese Gerichte?'),
+      childrenPadding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          plannerResult == null
+              ? 'Diese Auswahl stammt aus deinem bestehenden Plan oder deiner eigenen Auswahl. Beim Bestätigen werden geänderte Tage gegen deine aktuellen festen Regeln geprüft.'
+              : 'Zuerst gelten feste Ausschlüsse, Kochzeit und die 30-Tage-Pause. Danach werden passende Wochenkombinationen nach Geschmack, Abwechslung und verlässlich erfassten Vorräten verglichen. Budgetangaben sind eigene Schätzungen; fehlende Preise bleiben unbekannt.',
+        ),
+      ],
+    ),
     gap(5),
     Text(
       '${displayDate(week)} – ${displayDate(week.add(const Duration(days: 6)))} · ${draft!.length} Abendessen',
@@ -267,14 +361,14 @@ extension _PlanningProposal on _PlanningPageState {
       TextButton(
         onPressed: () async {
           await editPlanningDiners();
-          if (mounted && !readOnlyShared) {
+          if (mounted && !readOnlyPlanning) {
             createProposal(allowRepeats: allowPlanRepeats);
           }
         },
         child: const Text('Mitessende & feste Regeln'),
       ),
     TextButton(
-      onPressed: readOnlyShared
+      onPressed: readOnlyPlanning
           ? null
           : () async {
               if (await editPlannerResources() && mounted) {
@@ -320,11 +414,6 @@ extension _PlanningProposal on _PlanningPageState {
       day < (editingPlan ? 7 : startDay + planningDays);
       day++
     ) ...[proposalDay(day), gap(14)],
-    surveyCard(
-      'Warum gerade diese Gerichte?',
-      'Feste Ausschlüsse, Bewertungen, Kochzeit und 30-Tage-Pause zuerst. Anschließend vergleichen wir mehrere Wochenkombinationen nach persönlicher Passung und Abwechslung. Preis- und Vorratsdaten werden nur bei verlässlichen Angaben berücksichtigt.',
-      color: AppColors.cream,
-    ),
   ];
 
   Widget proposalDay(int day) {

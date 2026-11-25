@@ -80,7 +80,10 @@ sie werden nicht gemeinsam in einer einzigen Transaktion gespeichert. Ein
 Teilfehler wird angezeigt und muss erneut gespeichert bzw. abgeglichen werden.
 Private Wochenpläne besitzen mit Migration `202611180001_private_week_plan_revisions.sql`
 ebenfalls einen Versionsvergleich; siehe [accounts.md](accounts.md).
-Die App löscht keinen Haushalt und verschickt keine
+Bei einer endgültigen Kontolöschung werden Einpersonenhaushalte ebenfalls
+entfernt. Haushalte mit weiteren Mitgliedern bleiben erhalten; eine alleinige
+Verwaltung muss zuerst eine andere Verwaltung ernennen. Details und erforderliche
+Migration: [Datenverwaltung](data-management.md). Die App verschickt keine
 Haushaltseinladungen per E-Mail. Bestätigungs- und Passwort-Reset-Mails werden
 über Supabase Auth angefordert.
 

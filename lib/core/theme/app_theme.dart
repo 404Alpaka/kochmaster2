@@ -16,6 +16,8 @@ class AppColors {
 }
 
 class AppTheme {
+  static const cardRadius = 24.0;
+  static const controlRadius = 16.0;
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
@@ -34,6 +36,12 @@ class AppTheme {
           onPrimary: dark ? AppColors.darkBackground : Colors.white,
           surface: dark ? AppColors.darkSurface : Colors.white,
           onSurface: ink,
+          onSurfaceVariant: dark
+              ? const Color(0xFFB3C1B7)
+              : const Color(0xFF56675E),
+          outlineVariant: dark
+              ? const Color(0xFF3B4940)
+              : const Color(0xFFDCE3DA),
           primaryContainer: dark ? AppColors.darkSurface : AppColors.softGreen,
         );
     final base = ThemeData(useMaterial3: true, colorScheme: scheme);
@@ -42,6 +50,7 @@ class AppTheme {
       scaffoldBackgroundColor: background,
       textTheme: text.copyWith(
         headlineMedium: text.headlineMedium?.copyWith(
+          color: ink,
           fontSize: 28,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.7,
@@ -67,7 +76,9 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: scheme.surface,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardRadius),
+        ),
         margin: const EdgeInsets.only(bottom: 14),
         clipBehavior: Clip.antiAlias,
       ),
@@ -79,15 +90,15 @@ class AppTheme {
           vertical: 18,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(controlRadius),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(controlRadius),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(controlRadius),
           borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
@@ -95,9 +106,35 @@ class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(controlRadius),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          foregroundColor: scheme.primary,
+          side: BorderSide(color: scheme.outlineVariant),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(controlRadius),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(controlRadius),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardRadius),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -113,7 +150,7 @@ class AppTheme {
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
-      dividerTheme: const DividerThemeData(color: Color(0xFFE8EBE3), space: 24),
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 24),
     );
   }
 }

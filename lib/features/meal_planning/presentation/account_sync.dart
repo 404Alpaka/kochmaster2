@@ -6,7 +6,8 @@ extension _AccountSync on _PlanningPageState {
 
   String accountFailure(Object error) {
     if (error is PostgrestException) {
-      if(error.message.contains('Private data cannot be shared')) return 'Für die gemeinsamen Planerregeln fehlt die Datenbankmigration 202611190006_planner_household_resources.sql. Bitte anwenden und den Cloudstand erneut laden.';
+      if (error.message.contains('Private data cannot be shared'))
+        return 'Für die gemeinsamen Planerregeln fehlt die Datenbankmigration 202611190006_planner_household_resources.sql. Bitte anwenden und den Cloudstand erneut laden.';
       var code = error.code;
       if (code == '404' || code == '400') {
         try {
@@ -31,12 +32,16 @@ extension _AccountSync on _PlanningPageState {
     return 'Kontodaten konnten nicht synchronisiert werden. Prüfe die Verbindung und versuche es erneut.';
   }
 
-  Future<void> initializeAccountData() async {
+  Future<void> initializeAccountData({bool restoreProgress = true}) async {
     update(() {
       accountLoading = true;
       accountError = null;
+      offlineNotice = null;
     });
     try {
+      if (widget.client!.auth.currentSession?.isExpired == true) {
+        await widget.client!.auth.refreshSession();
+      }
       accountRepository ??= AccountDataRepository(
         widget.client!,
         widget.user!.id,
@@ -78,12 +83,21 @@ extension _AccountSync on _PlanningPageState {
       plan.clear();
       checked.clear();
       accountReady = true;
+      accountOffline = false;
       writeSession(preferencesKey, jsonEncode(personalCloudData));
-      await restoreCookingProgress();
+      await cacheAccountState();
+      if (restoreProgress) {
+        await restoreCookingProgress();
+      }
       if (!mounted) return;
       if (weekRepository != null) await loadWeek();
     } catch (error) {
-      if (mounted) update(() => accountError = accountFailure(error));
+      if (mounted && isConnectionFailure(error) && restoreOfflineAccount()) {
+        if (restoreProgress) await restoreCookingProgress();
+        if (mounted) await loadWeek();
+      } else if (mounted) {
+        update(() => accountError = accountFailure(error));
+      }
     } finally {
       if (mounted) update(() => accountLoading = false);
     }
@@ -139,6 +153,7 @@ extension _AccountSync on _PlanningPageState {
               );
               lastSharedData = shared;
             }
+            await cacheAccountState();
           } catch (error) {
             if (mounted) update(() => accountError = accountFailure(error));
           }
@@ -156,7 +171,12 @@ extension _AccountSync on _PlanningPageState {
   }
 
   Future<void> chooseAccountScope(String? id) async {
-    if (accountLoading || saving || loading || householdBusy) return;
+    if (cloudOffline) {
+      offlineEditMessage();
+      return;
+    }
+    if (accountLoading || saving || loading || householdBusy || preparedBusy)
+      return;
     update(() {
       accountLoading = true;
       householdError = null;
@@ -212,6 +232,7 @@ extension _AccountSync on _PlanningPageState {
         personalRevision,
       );
       writeSession(preferencesKey, jsonEncode(personalCloudData));
+      await cacheAccountState();
       await restoreCookingProgress();
       if (!mounted) return;
       if (weekRepository != null) await loadWeek();
@@ -223,7 +244,7 @@ extension _AccountSync on _PlanningPageState {
   }
 
   Future<void> reloadAccountData() async {
-    if (saving || householdBusy) return;
+    if (saving || householdBusy || preparedBusy) return;
     await accountSaveTail;
     if (!mounted) return;
     if (accountError != null && accountReady) {
@@ -281,6 +302,25 @@ extension _AccountSync on _PlanningPageState {
     }
     return Column(
       children: [
+        if (cloudOffline || offlineNotice != null)
+          MaterialBanner(
+            content: Text(
+              cloudOffline
+                  ? 'Offline: gespeicherter Stand. Einkaufshäkchen werden auf diesem Gerät gesichert. Für weitere Änderungen bitte verbinden.${offlineNotice == null ? '' : '\n$offlineNotice'}'
+                  : offlineNotice!,
+            ),
+            actions: [
+              TextButton(
+                onPressed: profileBusy ? null : reloadAccountData,
+                child: const Text('Cloudstand aktualisieren'),
+              ),
+              if (!cloudOffline)
+                TextButton(
+                  onPressed: () => update(() => offlineNotice = null),
+                  child: const Text('Schließen'),
+                ),
+            ],
+          ),
         if (accountPending > 0) const LinearProgressIndicator(),
         if (accountError != null)
           MaterialBanner(

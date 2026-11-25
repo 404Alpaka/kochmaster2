@@ -1,5 +1,9 @@
 # Konten und private Wochenpläne
 
+Dateiexport, lokale Bereinigung, Zurücksetzen persönlicher Cloud-Daten und
+endgültige Kontolöschung: [Datenverwaltung](data-management.md). Die Cloud-Aktionen
+benötigen zusätzlich die Migration `202611250001_account_data_management.sql`.
+
 Die Web-App bietet E-Mail/Passwort-Registrierung, Bestätigungshinweis, Login und
 Logout. Die Supabase-E-Mail-Bestätigung bleibt aktiv. Nach Bestätigung kann man
 sich in der App anmelden. Passwörter werden nur an Supabase Auth übermittelt,

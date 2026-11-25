@@ -1,6 +1,51 @@
 part of 'planning_page.dart';
 
 extension _ShoppingViews on _PlanningPageState {
+  String shoppingStockLabel(PantryIngredientMatch match) {
+    if (match.availableQuantity <= 0) {
+      return 'Kein vergleichbarer Vorrat erfasst';
+    }
+    return 'Vorrat: ${amountLabel(match.availableQuantity, match.unit)} · Noch nötig: ${amountLabel(match.missingQuantity, match.unit)}';
+  }
+
+  Future<void> copyShoppingList() async {
+    final items = shoppingBasketItems;
+    final stock = compareShoppingPantry(items, pantry, pantryToday);
+    final text = StringBuffer(
+      'Einkaufsliste · ${displayDate(week)} – ${displayDate(week.add(const Duration(days: 6)))}\n',
+    );
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      text.writeln(
+        '${checked.contains((item.ingredientId, item.unit)) ? '[x]' : '[ ]'} ${item.name} · ${amountLabel(item.quantity, item.unit)}',
+      );
+      if (stock[i].availableQuantity > 0) {
+        text.writeln('    ${shoppingStockLabel(stock[i])}');
+      }
+    }
+    text.writeln(
+      'Vorrat heute: Haltbarkeit vor Verwendung prüfen. Mengen wurden nicht automatisch abgezogen.',
+    );
+    try {
+      await Clipboard.setData(ClipboardData(text: text.toString()));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Einkaufsliste kopiert. Du kannst sie jetzt in einer Nachricht einfügen.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kopieren fehlgeschlagen. Bitte erneut versuchen.'),
+        ),
+      );
+    }
+  }
+
   static const _markets = [
     ('Marktgrün', 58.50, 3.90),
     ('Frischmarkt', 60.20, 4.90),
@@ -33,35 +78,27 @@ extension _ShoppingViews on _PlanningPageState {
   double get demoShoppingTotal => demoArticleTotal + demoDeliveryFee;
   int get demoProductCount => includeOatDrink ? 18 : 17;
 
-  List<Widget> shoppingFlow() => switch (shoppingPage) {
-    1 => selfShoppingView(),
-    2 => deliveryView(),
-    _ => basketView(),
-  };
+  bool get showingShoppingList =>
+      !shoppingExample && shoppingBasketItems.isNotEmpty && shoppingPage != 2;
 
-  List<IngredientAmount> get shoppingBasketItems {
-    final merged = <(String, String), IngredientAmount>{};
-    for (final item in [
-      ...buildShoppingList(plan.values),
-      ...pantryShoppingItems,
-    ]) {
-      final converted = planningQuantity(item.quantity, item.unit);
-      final unit = converted?.$2 ?? item.unit;
-      final quantity = converted?.$1 ?? item.quantity;
-      final key = (item.ingredientId, unit);
-      final existing = merged[key];
-      merged[key] = IngredientAmount(
-        item.ingredientId,
-        item.name,
-        (existing?.quantity ?? 0) + quantity,
-        unit == 'piece' ? 'Stück' : unit,
-      );
-    }
-    return merged.values.toList()..sort((a, b) => a.name.compareTo(b.name));
-  }
+  bool get showShoppingAction =>
+      !showingShoppingList &&
+      shoppingPage != 1 &&
+      (shoppingPage != 0 || cartHasItems);
+
+  List<Widget> shoppingFlow() => showingShoppingList
+      ? selfShoppingView()
+      : switch (shoppingPage) {
+          1 => selfShoppingView(),
+          2 => deliveryView(),
+          _ => basketView(),
+        };
+
+  List<IngredientAmount> get shoppingBasketItems =>
+      buildShoppingList(plan.values, additionalItems: pantryShoppingItems);
 
   bool get cartHasItems => shoppingExample || shoppingBasketItems.isNotEmpty;
-  bool get cartIsExample => shoppingExample && shoppingBasketItems.isEmpty;
+  bool get cartIsExample => shoppingExample;
 
   Widget shoppingActionBar() {
     if (shoppingPage == 2) {
@@ -155,11 +192,8 @@ extension _ShoppingViews on _PlanningPageState {
     final savings =
         totals.reduce((a, b) => a > b ? a : b) - totals[selectedMarket];
     return [
-      Text(
-        'Dein Einkauf',
-        style: Theme.of(context).textTheme.headlineMedium
-            ?.copyWith(color: AppColors.sage),
-      ),
+      if (empty) ...[weekPicker(), gap(16)],
+      Text('Dein Einkauf', style: Theme.of(context).textTheme.headlineMedium),
       gap(4),
       Text(
         empty

@@ -15,6 +15,8 @@ extension _ProfileViews on _PlanningPageState {
   }
 
   bool get profileBusy =>
+      dataActionBusy ||
+      preparedBusy ||
       accountPending > 0 ||
       accountLoading ||
       householdBusy ||
@@ -273,54 +275,6 @@ extension _ProfileViews on _PlanningPageState {
     }
   }
 
-  Future<void> exportLocalData() async {
-    await Clipboard.setData(
-      ClipboardData(
-        text: const JsonEncoder.withIndent('  ').convert(preferencesData()),
-      ),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Einstellungen und lokale Daten in die Zwischenablage kopiert.',
-        ),
-      ),
-    );
-  }
-
-  Future<void> clearLocalData() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Lokale Daten löschen?'),
-        content: const Text(
-          'Favoriten, Rezepte, Planungsdaten und persönliche Einstellungen werden auf diesem Gerät zurückgesetzt. Bei einem verbundenen Konto wird die Synchronisation danach auf den leeren Stand gesetzt.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFB13727),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Daten löschen'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    applyPreferences({});
-    writeSession(preferencesKey, jsonEncode(preferencesData()));
-    savePreferences();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lokale Daten wurden zurückgesetzt.')),
-    );
-  }
-
   Future<void> profileRequiresAccount() async {
     if (widget.client != null && widget.user == null) {
       await account();
@@ -409,7 +363,7 @@ extension _ProfileViews on _PlanningPageState {
     List<(IconData, String, VoidCallback?)> entries,
   ) => Material(
     color: Theme.of(context).colorScheme.surface,
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     clipBehavior: Clip.antiAlias,
     child: Column(
       children: [
@@ -465,6 +419,8 @@ extension _ProfileViews on _PlanningPageState {
   Widget profileSummary() {
     final status = !accountConnected
         ? 'Lokal gespeichert'
+        : cloudOffline
+        ? 'Offline verfügbar'
         : accountError != null
         ? 'Nicht gespeichert'
         : profileBusy
@@ -508,7 +464,7 @@ extension _ProfileViews on _PlanningPageState {
     );
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
@@ -575,7 +531,7 @@ extension _ProfileViews on _PlanningPageState {
 
   Widget profilePlanningArea() => Material(
     color: Theme.of(context).colorScheme.surface,
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -598,7 +554,7 @@ extension _ProfileViews on _PlanningPageState {
                       borderRadius: BorderRadius.circular(12),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
-                        onTap: profileBusy
+                        onTap: profileBusy || cloudOffline
                             ? null
                             : shared
                             ? selectSharedProfile
@@ -643,7 +599,7 @@ extension _ProfileViews on _PlanningPageState {
             children: [
               Expanded(
                 child: TextButton.icon(
-                  onPressed: profileBusy
+                  onPressed: profileBusy || cloudOffline
                       ? null
                       : accountConnected
                       ? createConnectedHousehold
@@ -665,7 +621,7 @@ extension _ProfileViews on _PlanningPageState {
               const SizedBox(width: 12),
               Expanded(
                 child: TextButton.icon(
-                  onPressed: profileBusy
+                  onPressed: profileBusy || cloudOffline
                       ? null
                       : accountConnected
                       ? acceptConnectedInvitation
@@ -697,9 +653,13 @@ extension _ProfileViews on _PlanningPageState {
               (
                 Icons.people_outline,
                 'Haushalt verwalten',
-                () => householdGo(14),
+                cloudOffline ? null : () => householdGo(14),
               ),
-              (Icons.tune, 'Mitessende & feste Regeln', editPlanningDiners),
+              (
+                Icons.tune,
+                'Mitessende & feste Regeln',
+                readOnlyPlanning ? null : editPlanningDiners,
+              ),
             ]),
           ],
           if (householdError != null)
@@ -720,11 +680,7 @@ extension _ProfileViews on _PlanningPageState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Profil',
-              style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(color: AppColors.sage),
-            ),
+            Text('Profil', style: Theme.of(context).textTheme.headlineMedium),
             gap(18),
             profileSummary(),
             profileSectionLabel('PLANUNGSBEREICH'),
@@ -734,12 +690,12 @@ extension _ProfileViews on _PlanningPageState {
               (
                 Icons.restaurant_outlined,
                 'Essenspräferenzen',
-                readOnlyShared ? null : () => editFoodPreferences(),
+                readOnlyPlanning ? null : () => editFoodPreferences(),
               ),
               (
                 Icons.block_outlined,
                 'Ausschlüsse & Abneigungen',
-                readOnlyShared ? null : () => householdGo(7),
+                readOnlyPlanning ? null : () => householdGo(7),
               ),
             ]),
             profileSectionLabel('MEHR'),
@@ -747,7 +703,7 @@ extension _ProfileViews on _PlanningPageState {
               (
                 Icons.bar_chart_outlined,
                 'Wochenrückblick',
-                readOnlyShared ? null : () => householdGo(11),
+                readOnlyPlanning ? null : () => householdGo(11),
               ),
               (
                 Icons.edit_note_outlined,
@@ -768,19 +724,19 @@ extension _ProfileViews on _PlanningPageState {
                 (
                   Icons.person_outline,
                   'Kontoprofil bearbeiten',
-                  profileBusy ? null : editAccountProfile,
+                  profileBusy || cloudOffline ? null : editAccountProfile,
                 ),
               if (widget.user != null)
                 (
                   Icons.email_outlined,
                   'E-Mail-Adresse ändern',
-                  profileBusy ? null : changeAccountEmail,
+                  profileBusy || cloudOffline ? null : changeAccountEmail,
                 ),
               if (widget.user != null)
                 (
                   Icons.password_outlined,
                   'Passwort ändern',
-                  profileBusy ? null : changeAccountPassword,
+                  profileBusy || cloudOffline ? null : changeAccountPassword,
                 ),
               (
                 Icons.palette_outlined,
@@ -799,13 +755,25 @@ extension _ProfileViews on _PlanningPageState {
               (
                 Icons.download_outlined,
                 'Meine Daten exportieren',
-                exportLocalData,
+                profileBusy || cloudOffline ? null : exportAccountData,
               ),
               (
                 Icons.delete_sweep_outlined,
-                'Lokale Daten löschen',
+                'Lokale App-Daten entfernen',
                 profileBusy ? null : clearLocalData,
               ),
+              if (accountConnected)
+                (
+                  Icons.cloud_off_outlined,
+                  'Meine Cloud-Daten zurücksetzen',
+                  profileBusy || cloudOffline ? null : resetCloudData,
+                ),
+              if (accountConnected)
+                (
+                  Icons.person_remove_outlined,
+                  'Konto endgültig löschen',
+                  profileBusy || cloudOffline ? null : deleteOwnAccount,
+                ),
               if (!accountConnected && widget.client == null)
                 (
                   Icons.people_outline,

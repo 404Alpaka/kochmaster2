@@ -1,9 +1,13 @@
 # Kochmaster: Struktur und Ausbau
 
-Stand: 18.11.2026. Flutter-App mit Schwerpunkt Web und Supabase für Rezeptkatalog,
+Stand: 25.11.2026. Flutter-App mit Schwerpunkt Web und Supabase für Rezeptkatalog,
 Authentifizierung und kontobezogene Daten. Android- und iOS-Projekte sind vorhanden;
 deren Sitzungen werden über geschützten Gerätespeicher dauerhaft gespeichert.
 Die Implementierung ist mit simuliertem Speicher getestet; Gerätetests stehen aus.
+Einstellungen und Gastdaten nutzen auch nativ dauerhaften lokalen Speicher.
+Katalog und geladene Kontodaten besitzen getrennte Offline-Kopien; Offline-Häkchen
+werden gezielt gegen den aktuellen Cloudplan abgeglichen. Details und Web-Build:
+[Offline-Nutzung](offline.md).
 
 ## Jetzt angelegt
 
@@ -45,7 +49,7 @@ Der App-Rahmen liegt in `app/kochmaster_app.dart`. Die Planungsoberfläche ist a
 - Android-/iOS-Gerätetests und native Rückleitungen für Auth-Links ergänzen.
 - Echtzeit-Synchronisierung und gemeinsame Transaktionen für zusammengehörige
   Plan- und Vorratsänderungen prüfen.
-- Einheitenumrechnung, Nährwertquellen und nachvollziehbare Kalorien-, Protein-
+- Packungsgrößen, Nährwertquellen und nachvollziehbare Kalorien-, Protein-
   und Budgetoptimierung ausbauen. Die vorhandene Allergenauswahl umfasst nur
   die angebotenen Planungsausschlüsse.
 - Händlerprodukte, zeitgestempelte Preise und bestellbare Packungen anbinden.
@@ -56,8 +60,10 @@ Der App-Rahmen liegt in `app/kochmaster_app.dart`. Die Planungsoberfläche ist a
 Öffentlicher Supabase-Katalog mit Suche, Rezeptdetails und Portionsskalierung;
 eine separate Demo-Datenquelle lässt sich ausdrücklich aktivieren. Datierte
 Kalenderwochen unterstützen ein Gericht pro Tag, Planungsvorschläge und eine
-abhakbare Einkaufsliste. Mengen werden anhand von Zutaten-ID und Einheit summiert;
-unterschiedliche Einheiten werden nicht automatisch umgerechnet.
+abhakbare Einkaufsliste. Vergleichbare Mengen werden anhand der Zutaten-ID in
+Gramm, Milliliter und Stück zusammengefasst. Planung, Vorratsabgleich, Einkauf und
+Kochverbrauch nutzen dieselbe Umrechnung. Unbekannte Packungsinhalte und
+unterschiedliche Dimensionen werden nicht ineinander umgerechnet.
 
 Registrierung, E-Mail-Bestätigung, Anmeldung, Abmeldung und Passwort-Reset sind
 implementiert. Web-Sitzungen werden im Browser, Android-/iOS-Sitzungen im

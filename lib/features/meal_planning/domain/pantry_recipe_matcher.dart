@@ -1,5 +1,6 @@
 import '../../recipes/domain/recipe.dart';
-import 'planning_resources.dart';
+import '../../recipes/domain/ingredient_amounts.dart';
+import '../../../core/quantities.dart';
 
 enum PantryIngredientState { full, partial, missing }
 
@@ -18,10 +19,13 @@ class PantryIngredientMatch {
   final String unit;
   final PantryIngredientState state;
 
-  double get missingQuantity => ((requiredQuantity - availableQuantity).clamp(
-    0,
-    double.infinity,
-  )).toDouble();
+  double get missingQuantity =>
+      sameQuantity(requiredQuantity, availableQuantity)
+      ? 0
+      : ((requiredQuantity - availableQuantity).clamp(
+          0,
+          double.infinity,
+        )).toDouble();
 }
 
 class PantryRecipeMatch {
@@ -68,19 +72,23 @@ class PantryRecipeMatcher {
     required int portions,
   }) {
     final stock = <String, Map<String, double>>{};
-    final names = <String, String>{
-      for (final recipe in recipes)
-        for (final ingredient in recipe.ingredients)
-          _normalizeName(ingredient.name): ingredient.ingredientId,
-    };
+    final names = <String, Set<String>>{};
+    for (final recipe in recipes) {
+      for (final ingredient in recipe.ingredients) {
+        names
+            .putIfAbsent(_normalizeName(ingredient.name), () => {})
+            .add(ingredient.ingredientId);
+      }
+    }
 
     for (final item in pantry) {
       var id = item['ingredientId'] as String?;
-      id ??= names[_normalizeName(item['name'] as String? ?? '')];
+      final candidates = names[_normalizeName(item['name'] as String? ?? '')];
+      id ??= candidates?.length == 1 ? candidates!.single : null;
       if (id == null) continue;
-      final parsed = _parsePantryAmount(item['amount'] as String?);
+      final parsed = parseQuantity(item['amount'] as String?);
       if (parsed == null) continue;
-      final converted = planningQuantity(parsed.$1, parsed.$2);
+      final converted = normalizeQuantity(parsed.$1, parsed.$2);
       if (converted == null) continue;
       final units = stock.putIfAbsent(id, () => <String, double>{});
       units[converted.$2] = (units[converted.$2] ?? 0) + converted.$1;
@@ -89,8 +97,8 @@ class PantryRecipeMatcher {
     final results = <PantryRecipeMatch>[];
     for (final recipe in recipes) {
       final matches = <PantryIngredientMatch>[];
-      for (final ingredient in recipe.ingredients) {
-        final scaled = planningQuantity(
+      for (final ingredient in mergeIngredientAmounts(recipe.ingredients)) {
+        final scaled = normalizeQuantity(
           ingredient.quantity * portions / recipe.servings,
           ingredient.unit,
         );
@@ -108,7 +116,8 @@ class PantryRecipeMatcher {
           continue;
         }
         final available = stock[ingredient.ingredientId]?[scaled.$2] ?? 0;
-        final state = available >= scaled.$1
+        final state =
+            available >= scaled.$1 || sameQuantity(available, scaled.$1)
             ? PantryIngredientState.full
             : available > 0
             ? PantryIngredientState.partial
@@ -146,22 +155,4 @@ class PantryRecipeMatcher {
       .replaceAll(RegExp(r'[^a-z0-9]'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
-
-  (double, String)? _parsePantryAmount(String? amount) {
-    final match = RegExp(r'^\s*(\d+(?:[.,]\d+)?)\s*(.*?)\s*$')
-        .firstMatch(amount ?? '');
-    if (match == null) return null;
-    final quantity = double.tryParse(match.group(1)!.replaceAll(',', '.'));
-    if (quantity == null) return null;
-    final rawUnit = match.group(2)!.trim();
-    final unit = switch (rawUnit.toLowerCase()) {
-      'kg' => 'kg',
-      'g' => 'g',
-      'l' => 'l',
-      'ml' => 'ml',
-      'stück' || 'stueck' || 'stk' || 'stk.' => 'Stück',
-      _ => rawUnit,
-    };
-    return (quantity, unit);
-  }
 }

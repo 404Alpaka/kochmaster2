@@ -169,3 +169,64 @@ Drei unvollständige bzw. widersprüchliche Einträge bleiben unverändert offen
 Allergen- und Ernährungsfreigaben, aktive Arbeitszeiten und Kostenangaben wurden
 nicht geraten. Einzelheiten und Prüfnachweise: [Rezeptdatenpflege](recipe-data-review.md).
 Die frühere Zählung ohne Planungsmerkmale beschreibt den Stand vor dieser Pflege.
+
+## Einkaufsliste und Wiederverwendung
+
+Die Einkaufsliste lässt sich mit Mengen, Häkchenstatus und Kalenderwoche in die Zwischenablage kopieren. Der Vorratsabgleich zählt nur vergleichbare Mengen und eindeutig zugeordnete Zutaten. Bereits abgelaufene Bestände und unbekannte Packungsinhalte erzeugen keine Deckung. Die Anzeige beschreibt den heutigen Bestand; Haltbarkeit vor Verwendung prüfen. Sie zieht keine Mengen automatisch ab und verändert den Vorrat nicht.
+
+„Vorwoche als Entwurf verwenden“ übernimmt Gerichte und Portionen in die ausgewählte Woche. Reservierte Restportionen, Kochstatus und Einkaufsstatus der Vorwoche werden nicht kopiert. Abbrechen ändert keinen gespeicherten Plan. Erst „Wochenplan bestätigen“ speichert den Entwurf; dabei gelten die aktuellen festen Regeln. Wiederholungen werden nach ausdrücklicher Bestätigung nur für diesen Entwurf erlaubt.
+
+„Warum diese Gerichte?“ steht aufklappbar oben im Vorschlag. Automatische Vorschläge und selbst gewählte bzw. übernommene Pläne werden unterschiedlich erklärt.
+
+## Restportionen über Kalenderwochen hinweg
+
+Vorbereitete Mahlzeiten werden beim erneuten Einplanen im aktiven privaten
+Bereich beziehungsweise Haushalt reserviert. Auch eine andere Zielwoche wird
+aus diesem Bereich geladen und mit ihrer geladenen Revision gespeichert. Der
+private Wochenplan wird bei einer Haushaltsreservierung nicht verwendet.
+
+Vorhandene Gerichte in der Zielwoche werden erst nach Bestätigung ersetzt.
+Andere Planplätze bleiben erhalten. Einkaufshäkchen werden anhand des
+Zutatenbedarfs des geänderten Plans übernommen.
+Abbrechen sowie Lade- oder Planspeicherfehler verändern weder den sichtbaren
+Ausgangsplan noch die Reservierungen. Ein erneuter Versuch lädt die Zielwoche
+frisch; bei einer verlorenen Serverantwort wird der unklare Speicherstand benannt.
+Während der Reservierung sind Navigation und Bereichswechsel gesperrt.
+
+Die Portionenzahl im Vorrat sinkt weiterhin erst beim Markieren als gegessen.
+Zutaten vorbereiteter Mahlzeiten erzeugen keinen erneuten Einkaufsbedarf.
+Plan und Vorratsdokument werden weiterhin getrennt gespeichert; gemeinsame
+Transaktionen sind ein eigener Überarbeitungspunkt.
+
+Regressionstests: `flutter test test/prepared_meal_planning_test.dart`.
+Diese Korrektur benötigt keine zusätzliche Datenbankmigration.
+
+## Einheitliche Mengen und Einkaufshäkchen
+
+Einkauf, Vorratsabgleich, Planbewertung und Kochverbrauch verwenden gemeinsame
+Mengenfunktionen. Kilogramm und Gramm werden in Gramm, Liter und Milliliter in
+Milliliter umgerechnet. Stück-Aliasse wie `Stk.` und `Stueck` werden als `Stück`
+geführt. Gleiche Zutaten werden je vergleichbarer Einheit über alle Planplätze
+und zusätzliche Einkaufspositionen summiert. Mehrere Zutatenzeilen eines Rezepts
+zählen beim Vorratsabgleich als gemeinsamer Bedarf.
+
+Ein Einkaufshäkchen bleibt bei unverändertem Gesamtbedarf bestehen, auch wenn
+ein anderes Gericht geändert oder `0,5 kg` durch `500 g` ersetzt wird. Höhere,
+niedrigere oder entfernte Bedarfsmengen werden wieder offen. Zusätzliche
+Einkaufspositionen werden ebenfalls berücksichtigt. Bereits gelistete Fehlmengen
+werden nicht mehrfach hinzugefügt; beim Ergänzen zählt nur der noch fehlende Rest.
+
+Vorhandene Häkchen werden beim Laden ohne Cloud-Schreibzugriff vereinheitlicht.
+Häkchen für zusammengefasste Basiseinheiten bleiben maßgeblich. Alte Häkchen für
+einzelne ursprüngliche Einheiten werden bei gemischten Einheiten nur übernommen,
+wenn alle beteiligten ursprünglichen Positionen abgehakt waren. Ein allein
+abgehaktes Kilogramm markiert dadurch keine zusätzlich offenen Gramm als gekauft.
+
+Vorräte mit unbekanntem Packungsinhalt werden nicht in Gramm oder Milliliter
+umgedeutet. Gewicht und Volumen bleiben getrennt; eine Dichte wird nicht
+angenommen. Der Kochmodus zeigt umgerechnete Verbrauchsmengen zur Bestätigung
+und schreibt den Restbestand in derselben Basiseinheit zurück. Eindeutige
+Zutaten-IDs haben dabei Vorrang vor abweichenden Produktnamen.
+
+Prüfung: `flutter test test/quantity_consistency_test.dart test/quantity_flow_test.dart`.
+Eine zusätzliche Datenbankmigration ist nicht nötig.

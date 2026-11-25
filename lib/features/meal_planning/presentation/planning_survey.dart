@@ -1,11 +1,7 @@
 part of 'planning_page.dart';
 
 extension _PlanningSurvey on _PlanningPageState {
-  Widget surveyCard(
-    String heading,
-    String body, {
-    Color color = Colors.white,
-  }) => panel(
+  Widget surveyCard(String heading, String body, {Color? color}) => panel(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -14,7 +10,14 @@ extension _PlanningSurvey on _PlanningPageState {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         gap(7),
-        Text(body, style: muted),
+        Text(
+          body,
+          style: muted.copyWith(
+            color: color != null && color.computeLuminance() > .5
+                ? AppTheme.light.colorScheme.onSurfaceVariant
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     ),
     color: color,
@@ -80,6 +83,13 @@ extension _PlanningSurvey on _PlanningPageState {
       Text('Ein guter Plan beginnt mit deinem Geschmack.', style: muted),
       gap(12),
       weekActionCard(),
+      TextButton.icon(
+        onPressed: loading || saving || readOnlyShared
+            ? null
+            : reusePreviousWeek,
+        icon: const Icon(Icons.history),
+        label: const Text('Vorwoche als Entwurf verwenden'),
+      ),
       gap(18),
       panel(
         Column(

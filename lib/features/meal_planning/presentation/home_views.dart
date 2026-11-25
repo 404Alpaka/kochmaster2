@@ -2,6 +2,10 @@ part of 'planning_page.dart';
 
 extension _HomeViews on _PlanningPageState {
   Future<bool> editFoodPreferences() async {
+    if (cloudOffline) {
+      offlineEditMessage();
+      return false;
+    }
     final result = await Navigator.of(context).push<FoodPreferences>(
       MaterialPageRoute(
         builder: (_) => FoodPreferencesPage(
@@ -47,7 +51,7 @@ extension _HomeViews on _PlanningPageState {
       ),
       child: Material(
         color: AppColors.sage,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: const ValueKey('food-preferences-card'),
@@ -301,7 +305,7 @@ extension _HomeViews on _PlanningPageState {
 
   Widget homePlanCard() => Material(
     color: _homeGreen,
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: () => selectTab(1),
@@ -350,7 +354,9 @@ extension _HomeViews on _PlanningPageState {
                   ),
                   gap(8),
                   Text(
-                    '${plan.length} von 7 Tagen geplant',
+                    draft != null
+                        ? 'Entwurf fortsetzen · noch nicht übernommen'
+                        : '${plan.length} von 7 Tagen geplant',
                     style: const TextStyle(
                       color: Color(0xFFBDCDC4),
                       fontSize: 14,
@@ -388,7 +394,7 @@ extension _HomeViews on _PlanningPageState {
     color: Theme.of(context).brightness == Brightness.dark
         ? AppColors.darkSurface
         : const Color(0xFFF0EEDF),
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: openTodayCooking,
@@ -443,7 +449,7 @@ extension _HomeViews on _PlanningPageState {
   Widget homeRecipeCard(Recipe recipe) => Card(
     margin: EdgeInsets.zero,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       side: BorderSide(
         color: Theme.of(context).dividerColor.withValues(alpha: .15),
       ),

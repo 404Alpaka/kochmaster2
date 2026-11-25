@@ -1,19 +1,10 @@
 import '../../recipes/domain/recipe.dart';
+import '../../../core/quantities.dart';
 
 /// Quantities are comparable only within the same dimension. No density or
 /// package-size assumptions are made for cans, bunches or free-text units.
 (double, String)? planningQuantity(double quantity, String unit) {
-  if (!quantity.isFinite || quantity <= 0) return null;
-  final normalized = unit.trim().toLowerCase();
-  final converted = switch (normalized) {
-    'kg' => (quantity * 1000, 'g'),
-    'g' => (quantity, 'g'),
-    'l' => (quantity * 1000, 'ml'),
-    'ml' => (quantity, 'ml'),
-    'stück' || 'stueck' || 'stk' || 'stk.' => (quantity, 'piece'),
-    _ => null,
-  };
-  return converted == null || !converted.$1.isFinite ? null : converted;
+  return normalizeQuantity(quantity, unit);
 }
 
 class PlanningStock {
@@ -127,7 +118,8 @@ class PlanningResources {
         for (var i = 0; i < lots.length && wanted > 0; i++) {
           final lot = lots[i];
           if (lot.ingredientId != ingredient.key.$1 ||
-              planningQuantity(lot.quantity, lot.unit)!.$2 != ingredient.key.$2) {
+              planningQuantity(lot.quantity, lot.unit)!.$2 !=
+                  ingredient.key.$2) {
             continue;
           }
           if (lot.expires != null &&

@@ -24,6 +24,7 @@ class AccountBackend {
   final writes = <Map<String, dynamic>>[];
   String role = 'editor';
   bool missing = false;
+  bool offline = false;
   int stateRevision = 0;
   Map<String, dynamic> shared = {'pantry': <dynamic>[]};
   Map<String, dynamic> sharedWeek = {
@@ -74,6 +75,7 @@ class AccountBackend {
       }
       if (path == 'logout') return http.Response('', 204, request: request);
       if (path == 'is_recipe_admin') return response(false);
+      if (offline) throw http.ClientException('offline');
       if (missing)
         return response({
           'code': '42P01',

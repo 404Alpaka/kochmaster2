@@ -6,9 +6,11 @@ import 'app/kochmaster_app.dart';
 import 'core/config/app_config.dart';
 import 'features/recipes/data/supabase_recipe_repository.dart';
 import 'core/cooking_runtime.dart';
+import 'core/local_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalStore.instance.initialize();
   await CookingRuntime.initialize();
   const url = AppConfig.url;
   const key = AppConfig.publishableKey;
