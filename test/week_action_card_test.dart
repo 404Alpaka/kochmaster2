@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:supabase/supabase.dart';
 import 'package:kochmaster/features/recipes/domain/recipe.dart';
 import 'package:kochmaster/core/theme/app_theme.dart';
@@ -21,6 +26,11 @@ class MissingRevisionStore extends MemoryWeekStore {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+  });
+
   final recipes = DemoRecipeRepository().getAll();
   final today = DateTime.now().weekday - 1;
   final week = mondayOf(DateTime.now());
@@ -234,17 +244,121 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.widgetWithText(FilledButton, 'Gekocht markieren ✓'));
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.widgetWithText(FilledButton, 'Vorrat & 0 Portionen speichern'),
+      find.widgetWithText(FilledButton, 'Zubereitung abschließen'),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Gekocht speichern'));
     await tester.pumpAndSettle();
     expect(find.text('Heute erledigt ✓'), findsOneWidget);
     expect(find.text('Jetzt kochen'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('week-primary-action')));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Mehr Portionen'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'laufender Kochvorgang wird nach erneutem App-Öffnen fortgesetzt',
+    (tester) async {
+      final store = MemoryWeekStore();
+      await store.save(
+        week,
+        WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 2)}),
+      );
+      await open(tester, store);
+      await tester.tap(find.byKey(const ValueKey('week-primary-action')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mehr Kochportionen'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 Portionen'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Kochen starten'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Starten'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('TIMER LÄUFT'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Weiter: Schritt 2'));
+      await tester.pumpAndSettle();
+      await tester.pump();
+      final stored = await SharedPreferencesAsync().getString(
+        'kochmaster-cooking-progress-guest-private',
+      );
+      final storedProgress = jsonDecode(stored!) as Map<String, dynamic>;
+      expect(storedProgress['portions'], 3);
+      expect(storedProgress['step'], 1);
+      expect((storedProgress['timers'] as Map)['0']['started'], isTrue);
+      await tester.pumpWidget(const SizedBox());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PlanningPage(recipes: recipes, isDemo: false, store: store),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kochvorgang fortsetzen'), findsOneWidget);
+      expect(
+        find.text(
+          'Schritt 2 von ${recipes.first.steps.length} · ${recipes.first.name}',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Kochvorgang fortsetzen'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('SCHRITT 2 VON ${recipes.first.steps.length}'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Kochübersicht'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 Portionen'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.textContaining('TIMER'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('TIMER LÄUFT'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Kochvorgang wird erst nach Bestätigung abgebrochen', (
+    tester,
+  ) async {
+    final store = MemoryWeekStore();
+    await store.save(
+      week,
+      WeeklyPlan(meals: {today: PlannedMeal(recipes.first, 2)}),
+    );
+    await open(tester, store);
+    await tester.tap(find.byKey(const ValueKey('week-primary-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kochvorgang abbrechen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kochvorgang abbrechen?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Weiterkochen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kochen starten'), findsOneWidget);
+
+    await tester.tap(find.text('Kochvorgang abbrechen'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Kochvorgang abbrechen'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jetzt kochen'), findsOneWidget);
+    expect(find.text('Heute erledigt ✓'), findsNothing);
+    expect(
+      await SharedPreferencesAsync().getString(
+        'kochmaster-cooking-progress-guest-private',
+      ),
+      isNull,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -73,11 +73,14 @@ extension _AccountSync on _PlanningPageState {
       cookingTicker?.cancel();
       cookingRecipe = null;
       cookingPage = 0;
+      unawaited(CookingRuntime.disableKeepScreenOn());
       localWeekCache.clear();
       plan.clear();
       checked.clear();
       accountReady = true;
       writeSession(preferencesKey, jsonEncode(personalCloudData));
+      await restoreCookingProgress();
+      if (!mounted) return;
       if (weekRepository != null) await loadWeek();
     } catch (error) {
       if (mounted) update(() => accountError = accountFailure(error));
@@ -195,6 +198,8 @@ extension _AccountSync on _PlanningPageState {
       cookingTicker?.cancel();
       cookingRecipe = null;
       cookingPage = 0;
+      cookingTimers.clear();
+      unawaited(CookingRuntime.disableKeepScreenOn());
       draft = null;
       surveyStep = 0;
       householdPage = 0;
@@ -207,6 +212,8 @@ extension _AccountSync on _PlanningPageState {
         personalRevision,
       );
       writeSession(preferencesKey, jsonEncode(personalCloudData));
+      await restoreCookingProgress();
+      if (!mounted) return;
       if (weekRepository != null) await loadWeek();
     } catch (error) {
       if (mounted) update(() => accountError = accountFailure(error));

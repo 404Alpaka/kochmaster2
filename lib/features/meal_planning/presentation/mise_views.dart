@@ -44,11 +44,15 @@ extension _MiseViews on _PlanningPageState {
       label: Text(text),
     ),
   );
-  void selectTab(int value) => update(() {
-    tab = value;
-    cookingPage = 0;
-    openedRecipe = null;
-  });
+  void selectTab(int value) {
+    final leavingCooking = cookingPage > 0;
+    update(() {
+      tab = value;
+      cookingPage = 0;
+      openedRecipe = null;
+    });
+    if (leavingCooking) unawaited(CookingRuntime.disableKeepScreenOn());
+  }
 
   bool get hasBottomAction =>
       cookingPage > 0 ||

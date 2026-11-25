@@ -18,6 +18,7 @@ import '../../recipes/presentation/admin_recipes_page.dart';
 import '../../recipes/presentation/recipe_editor_page.dart';
 
 import 'package:supabase/supabase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../auth/presentation/account_page.dart';
 import '../../auth/presentation/auth_messages.dart';
@@ -28,6 +29,7 @@ import '../domain/meal_plan.dart';
 import '../domain/weekly_planner.dart';
 import '../domain/planning_resources.dart';
 import '../domain/cooking_timer.dart';
+import '../domain/cooking_progress.dart';
 import '../../../core/cooking_runtime.dart';
 import '../domain/planning_diner.dart';
 import 'household_diners_page.dart';
@@ -126,6 +128,10 @@ class _PlanningPageState extends State<PlanningPage> {
   String cookingKey = '';
   Timer? cookingTicker;
   final cookingTimers = <int, CookingTimer>{};
+  SharedPreferencesAsync? _cookingProgressStore;
+  SharedPreferencesAsync get cookingProgressStore =>
+      _cookingProgressStore ??= SharedPreferencesAsync();
+  Future<void> cookingProgressWrite = Future<void>.value();
   final cookingUses = <_CookingUse>[];
   bool deductCookingStock = true;
   int remainingCookedPortions = 0;
@@ -283,6 +289,8 @@ class _PlanningPageState extends State<PlanningPage> {
   String? householdError;
 
   String get preferencesKey => 'mise-preferences-${widget.user?.id ?? 'guest'}';
+  String get cookingProgressKey =>
+      'kochmaster-cooking-progress-${widget.user?.id ?? 'guest'}-${activeHouseholdId ?? 'private'}';
 
   void update(VoidCallback change) => setState(change);
 
@@ -547,8 +555,9 @@ class _PlanningPageState extends State<PlanningPage> {
     personalCloudData = copyAccountData(preferencesData());
     if (accountConnected) {
       initializeAccountData();
-    } else if (weekRepository != null) {
-      loadWeek();
+    } else {
+      unawaited(restoreCookingProgress());
+      if (weekRepository != null) loadWeek();
     }
     if (widget.adminRepository != null) {
       admin = true;

@@ -1,11 +1,34 @@
 class CookingTimer {
   CookingTimer(this.seconds) : pausedSeconds = seconds;
 
+  factory CookingTimer.fromJson(Map<String, dynamic> data) {
+    final seconds = (data['seconds'] as num).toInt();
+    final pausedSeconds = (data['pausedSeconds'] as num).toInt();
+    if (seconds <= 0 || pausedSeconds < 0) {
+      throw const FormatException('Ungültige Koch-Timer-Dauer.');
+    }
+    final timer = CookingTimer(seconds)
+      ..pausedSeconds = pausedSeconds
+      ..started = data['started'] as bool? ?? false
+      ..announced = data['announced'] as bool? ?? false;
+    final deadline = data['deadline'] as String?;
+    timer.deadline = deadline == null ? null : DateTime.parse(deadline);
+    return timer;
+  }
+
   int seconds;
   int pausedSeconds;
   DateTime? deadline;
   bool started = false;
   bool announced = false;
+
+  Map<String, dynamic> toJson() => {
+    'seconds': seconds,
+    'pausedSeconds': pausedSeconds,
+    'deadline': deadline?.toIso8601String(),
+    'started': started,
+    'announced': announced,
+  };
 
   DateTime _timeNow() => DateTime.now();
 

@@ -111,11 +111,8 @@ extension _HomeViews on _PlanningPageState {
   Future<void> openTodayCooking() async {
     if (loading || saving) return;
     if (cookingRecipe != null && !cookedEntries.contains(cookingKey)) {
-      await openCooking(
-        cookingRecipe!,
-        portions: cookingPortions,
-        day: cookingDay,
-      );
+      update(() => cookingPage = cookingStep > 0 ? 2 : 1);
+      unawaited(CookingRuntime.enableKeepScreenOn());
       return;
     }
     final today = pantryToday;

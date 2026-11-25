@@ -8,6 +8,202 @@ class _CookingUse {
 }
 
 extension _CookingViews on _PlanningPageState {
+  Future<void> persistCookingProgress({bool clear = false}) async {
+    final snapshot = !clear && cookingRecipe != null
+        ? jsonEncode(
+            CookingProgress(
+              recipe: cookingRecipe!,
+              portions: cookingPortions,
+              step: cookingStep,
+              key: cookingKey,
+              date: cookingDate ?? pantryToday,
+              day: cookingDay,
+              timers: Map<int, CookingTimer>.from(cookingTimers),
+            ).toJson(),
+          )
+        : null;
+    final operation = cookingProgressWrite.then((_) async {
+      if (snapshot == null) {
+        await cookingProgressStore.remove(cookingProgressKey);
+      } else {
+        await cookingProgressStore.setString(cookingProgressKey, snapshot);
+      }
+    });
+    cookingProgressWrite = operation.catchError((Object _) {});
+    try {
+      await operation;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Der Kochfortschritt konnte nicht lokal gespeichert werden.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void showCookingProgressMessage(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
+
+  Future<void> restoreCookingProgress() async {
+    String? raw;
+    try {
+      raw = await cookingProgressStore.getString(cookingProgressKey);
+    } catch (_) {
+      if (mounted) {
+        showCookingProgressMessage(
+          'Der lokale Kochfortschritt konnte nicht geladen werden.',
+        );
+      }
+      return;
+    }
+    if (raw == null || !mounted || cookingRecipe != null) return;
+
+    late CookingProgress progress;
+    try {
+      progress = CookingProgress.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      try {
+        await cookingProgressStore.remove(cookingProgressKey);
+      } catch (_) {
+        // Keep the invalid entry for inspection if storage is unavailable.
+      }
+      if (mounted) {
+        showCookingProgressMessage(
+          'Der gespeicherte Kochfortschritt war ungültig und wurde verworfen.',
+        );
+      }
+      return;
+    }
+
+    try {
+      if (cookedEntries.contains(progress.key)) {
+        await cookingProgressStore.remove(cookingProgressKey);
+        return;
+      }
+      var restoredRecipe = progress.recipe;
+      for (final recipe in recipes) {
+        if (recipe.id == progress.recipe.id) {
+          restoredRecipe = recipe;
+          break;
+        }
+      }
+      final validTimers = <int, CookingTimer>{
+        for (final entry in progress.timers.entries)
+          if (entry.key >= 0 && entry.key < restoredRecipe.steps.length)
+            entry.key: entry.value,
+      };
+      update(() {
+        cookingRecipe = restoredRecipe;
+        cookingPortions = progress.portions.clamp(1, 30).toInt();
+        cookingStep = progress.step
+            .clamp(0, (restoredRecipe.steps.length - 1).clamp(0, 100000))
+            .toInt();
+        cookingDate = progress.date;
+        cookingDay = progress.day;
+        cookingKey = progress.key;
+        cookingPage = 0;
+        cookingTimers
+          ..clear()
+          ..addAll(validTimers);
+        cookingUses.clear();
+      });
+      startCookingTicker();
+    } catch (_) {
+      if (mounted) {
+        showCookingProgressMessage(
+          'Der Kochfortschritt konnte nicht wiederhergestellt werden.',
+        );
+      }
+    }
+  }
+
+  void startCookingTicker() {
+    cookingTicker?.cancel();
+    checkCookingTimers();
+    cookingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      checkCookingTimers();
+    });
+  }
+
+  void checkCookingTimers() {
+    if (!mounted || cookingRecipe == null) return;
+    final ended = <int>[];
+    for (final entry in cookingTimers.entries) {
+      if (entry.value.started &&
+          entry.value.deadline != null &&
+          entry.value.remaining == 0 &&
+          !entry.value.announced) {
+        entry.value.announced = true;
+        ended.add(entry.key);
+      }
+    }
+    if (cookingTimers.values.any((timer) => timer.running) ||
+        ended.isNotEmpty) {
+      update(() {});
+    }
+    if (ended.isNotEmpty) {
+      unawaited(persistCookingProgress());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Timer beendet: Schritt ${ended.map((i) => i + 1).join(', ')}.',
+          ),
+        ),
+      );
+      for (final step in ended) {
+        unawaited(CookingRuntime.showTimerNotification(step));
+      }
+    }
+  }
+
+  Future<void> cancelCooking() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kochvorgang abbrechen?'),
+        content: const Text(
+          'Der Kochfortschritt und alle Timer werden beendet. Vorräte und übrige Portionen bleiben unverändert.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Weiterkochen'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Kochvorgang abbrechen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    cookingTicker?.cancel();
+    update(() {
+      cookingRecipe = null;
+      cookingPage = 0;
+      cookingStep = 0;
+      cookingPortions = servings;
+      cookingDay = null;
+      cookingDate = null;
+      cookingKey = '';
+      cookingTimers.clear();
+      cookingUses.clear();
+    });
+    await persistCookingProgress(clear: true);
+    unawaited(CookingRuntime.disableKeepScreenOn());
+  }
+
   List<Widget> cookingFlow() => cookingRecipe == null
       ? []
       : switch (cookingPage) {
@@ -82,33 +278,8 @@ extension _CookingViews on _PlanningPageState {
       cookedStorage = 'Kühlschrank';
     });
     unawaited(CookingRuntime.enableKeepScreenOn());
-    cookingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      final ended = <int>[];
-      for (final entry in cookingTimers.entries) {
-        if (entry.value.started &&
-            entry.value.deadline != null &&
-            entry.value.remaining == 0 &&
-            !entry.value.announced) {
-          entry.value.announced = true;
-          ended.add(entry.key);
-        }
-      }
-      if (cookingTimers.values.any((t) => t.running) || ended.isNotEmpty)
-        update(() {});
-      if (ended.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Timer beendet: Schritt ${ended.map((i) => i + 1).join(', ')}.',
-            ),
-          ),
-        );
-        for (final step in ended) {
-          unawaited(CookingRuntime.showTimerNotification(step));
-        }
-      }
-    });
+    startCookingTicker();
+    unawaited(persistCookingProgress());
   }
 
   Widget cookingPortionControl() => Row(
@@ -117,7 +288,10 @@ extension _CookingViews on _PlanningPageState {
         tooltip: 'Weniger Kochportionen',
         onPressed: cookingPortions <= 1
             ? null
-            : () => update(() => cookingPortions--),
+            : () {
+                update(() => cookingPortions--);
+                unawaited(persistCookingProgress());
+              },
         icon: const Icon(Icons.remove),
       ),
       Expanded(
@@ -131,7 +305,10 @@ extension _CookingViews on _PlanningPageState {
         tooltip: 'Mehr Kochportionen',
         onPressed: cookingPortions >= 30
             ? null
-            : () => update(() => cookingPortions++),
+            : () {
+                update(() => cookingPortions++);
+                unawaited(persistCookingProgress());
+              },
         icon: const Icon(Icons.add),
       ),
     ],
@@ -203,10 +380,13 @@ extension _CookingViews on _PlanningPageState {
         style: TextButton.styleFrom(alignment: Alignment.centerLeft),
         onPressed: cookedEntries.contains(cookingKey)
             ? null
-            : () => update(() {
-                cookingStep = i;
-                cookingPage = 2;
-              }),
+            : () {
+                update(() {
+                  cookingStep = i;
+                  cookingPage = 2;
+                });
+                unawaited(persistCookingProgress());
+              },
         child: Text(
           '${i + 1}  ${renderRecipeStep(cookingRecipe!, cookingRecipe!.steps[i], portions: cookingPortions)}',
         ),
@@ -285,21 +465,26 @@ extension _CookingViews on _PlanningPageState {
                       ? 'Fortsetzen'
                       : 'Starten',
                   false,
-                  () => update(timer.toggle),
+                  () {
+                    update(timer.toggle);
+                    unawaited(persistCookingProgress());
+                  },
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: recipeAction(
-                  '+ 1 Min.',
-                  false,
-                  () => update(timer.addMinute),
-                ),
+                child: recipeAction('+ 1 Min.', false, () {
+                  update(timer.addMinute);
+                  unawaited(persistCookingProgress());
+                }),
               ),
             ],
           ),
           TextButton(
-            onPressed: () => update(timer.reset),
+            onPressed: () {
+              update(timer.reset);
+              unawaited(persistCookingProgress());
+            },
             child: Text('Zurücksetzen', style: TextStyle(color: color)),
           ),
         ],
@@ -317,7 +502,10 @@ extension _CookingViews on _PlanningPageState {
     if (steps.isEmpty) return cookingOverview();
     final timer = stepTimer(cookingStep);
     return [
-      proposalBack('Kochübersicht', () => update(() => cookingPage = 1)),
+      proposalBack('Kochübersicht', () {
+        update(() => cookingPage = 1);
+        unawaited(persistCookingProgress());
+      }),
       gap(16),
       Row(
         children: [
@@ -373,13 +561,19 @@ extension _CookingViews on _PlanningPageState {
               'Schritt ${e.key + 1} · ${timerLabel(e.value.remaining)}',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => update(() => cookingStep = e.key),
+            onTap: () {
+              update(() => cookingStep = e.key);
+              unawaited(persistCookingProgress());
+            },
           ),
         gap(14),
       ],
       if (cookingStep > 0)
         TextButton(
-          onPressed: () => update(() => cookingStep--),
+          onPressed: () {
+            update(() => cookingStep--);
+            unawaited(persistCookingProgress());
+          },
           child: const Text('Vorheriger Schritt'),
         ),
       surveyCard(
@@ -390,7 +584,7 @@ extension _CookingViews on _PlanningPageState {
       ),
       gap(14),
       Text(
-        'Timer laufen beim Schrittwechsel weiter. Hinweise erscheinen nur in der geöffneten App; beim Neuladen endet der Kochmodus.',
+        'Timer laufen beim Schrittwechsel weiter. Beim Verlassen bleibt der Kochvorgang gespeichert und kann später fortgesetzt werden.',
         style: muted,
       ),
     ];
@@ -431,6 +625,7 @@ extension _CookingViews on _PlanningPageState {
       cookedOn = pantryToday;
       cookingPage = 3;
     });
+    unawaited(persistCookingProgress());
   }
 
   Future<void> editCookingUse(_CookingUse use) async {
@@ -478,10 +673,10 @@ extension _CookingViews on _PlanningPageState {
   }
 
   List<Widget> cookingFinishedView() => [
-    proposalBack(
-      'Zurück zur Kochübersicht',
-      () => update(() => cookingPage = 1),
-    ),
+    proposalBack('Zurück zur Kochübersicht', () {
+      update(() => cookingPage = 1);
+      unawaited(persistCookingProgress());
+    }),
     gap(14),
     const Text(
       '✓ Kochschritte abgeschlossen',
@@ -655,6 +850,7 @@ extension _CookingViews on _PlanningPageState {
     cookingTicker?.cancel();
     cookingTimers.clear();
     savePreferences();
+    unawaited(persistCookingProgress(clear: true));
     unawaited(CookingRuntime.disableKeepScreenOn());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -670,10 +866,10 @@ extension _CookingViews on _PlanningPageState {
     final label = cookingPage == 1
         ? 'Kochen starten'
         : cookingPage == 3
-        ? 'Vorrat & $remainingCookedPortions Portionen speichern'
+        ? 'Gekocht speichern'
         : cookingStep + 1 < cookingRecipe!.steps.length
         ? 'Weiter: Schritt ${cookingStep + 2}'
-        : 'Gekocht markieren ✓';
+        : 'Zubereitung abschließen';
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1100),
@@ -695,11 +891,13 @@ extension _CookingViews on _PlanningPageState {
                               cookingStep = 0;
                               cookingPage = 2;
                             });
+                            unawaited(persistCookingProgress());
                           } else if (cookingPage == 3) {
                             saveCookingResult();
                           } else if (cookingStep + 1 <
                               cookingRecipe!.steps.length) {
                             update(() => cookingStep++);
+                            unawaited(persistCookingProgress());
                           } else {
                             prepareCookingReview();
                           }
@@ -711,6 +909,13 @@ extension _CookingViews on _PlanningPageState {
                   ),
                 ),
               ),
+              if (!alreadyCooked) ...[
+                gap(4),
+                TextButton(
+                  onPressed: cancelCooking,
+                  child: const Text('Kochvorgang abbrechen'),
+                ),
+              ],
               gap(8),
               Text(
                 cookingPage == 3
