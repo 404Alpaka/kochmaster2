@@ -16,7 +16,10 @@ Priorisierung aus der Analyse vom 25.11.2026:
 6. Synchronisierung und zusammengehörige Haushaltsänderungen absichern.
 7. Alltagstauglichen Einkauf mit Kategorien, Packungsgrößen und bestätigter
    Übernahme gekaufter Mengen in den Vorrat ausbauen.
-8. Planung, Vorrat, Einkauf und Kochmodus technisch entflechten.
+8. Planung, Vorrat, Einkauf und Kochmodus technisch entflechten. Erster Schritt:
+   Der Kochmodus besitzt seinen eigenen Sitzungszustand in
+   `lib/features/meal_planning/presentation/cooking_session.dart`; Planung,
+   Vorrat und Einkauf werden schrittweise weiter entkoppelt.
 9. **Wiederkehrende wöchentliche Einkäufe:** eine bearbeitbare Standardliste für
    Lebensmittel und Haushaltsartikel, die unabhängig vom Rezeptplan jede Woche
    gebraucht werden, beispielsweise sechs Bananen, ein Liter Milch oder Brot.

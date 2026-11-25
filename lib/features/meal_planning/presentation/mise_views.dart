@@ -55,32 +55,32 @@ extension _MiseViews on _PlanningPageState {
     ),
   );
   void selectTab(int value) {
-    final leavingCooking = cookingPage > 0;
+    final leavingCooking = cookingSession.page > 0;
     update(() {
       if (value == 3 && tab != 3) {
         shoppingExample = false;
         shoppingPage = 0;
       }
       tab = value;
-      cookingPage = 0;
+      cookingSession.page = 0;
       openedRecipe = null;
     });
     if (leavingCooking) unawaited(CookingRuntime.disableKeepScreenOn());
   }
 
   bool get hasBottomAction =>
-      cookingPage > 0 ||
+      cookingSession.page > 0 ||
       (!readOnlyPlanning &&
-          cookingPage == 0 &&
+          cookingSession.page == 0 &&
           (showPlanningAction ||
               showProposalAction ||
               (tab == 3 && showShoppingAction) ||
               (tab == 2 && pantryPage != 0))) ||
-      (cookingPage == 0 &&
+      (cookingSession.page == 0 &&
           tab == 0 &&
           collectionPage > 0 &&
           openedRecipe == null) ||
-      (cookingPage == 0 &&
+      (cookingSession.page == 0 &&
           tab == 4 &&
           householdPage > 0 &&
           householdPage < 14 &&
@@ -91,7 +91,7 @@ extension _MiseViews on _PlanningPageState {
         ? recipeDiscoveryControls()
         : tab == 2 &&
               pantryPage == 0 &&
-              cookingPage == 0 &&
+              cookingSession.page == 0 &&
               !readOnlyPlanning &&
               (pantry.isNotEmpty || preparedMeals.isNotEmpty)
         ? FloatingActionButton(
@@ -142,7 +142,7 @@ extension _MiseViews on _PlanningPageState {
                 child: Builder(
                   builder: (contentContext) => ListView(
                     key: ValueKey(
-                      'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$shoppingExample-$pantryPage-$householdPage-$cookingPage-$cookingStep-$collectionPage',
+                      'mise-page-$tab-${dateKey(week)}-${openedRecipe?.id ?? 'overview'}-$surveyStep-${draft != null}-$swappingDay-$shoppingPage-$shoppingExample-$pantryPage-$householdPage-${cookingSession.page}-${cookingSession.step}-$collectionPage',
                     ),
                     padding: EdgeInsets.fromLTRB(
                       22,
@@ -151,8 +151,8 @@ extension _MiseViews on _PlanningPageState {
                       28 + MediaQuery.paddingOf(contentContext).bottom,
                     ),
                     children: [
-                      if (cookingPage > 0) ...cookingFlow(),
-                      if (cookingPage == 0) ...[
+                      if (cookingSession.page > 0) ...cookingFlow(),
+                      if (cookingSession.page == 0) ...[
                         if (tab == 5) ...homeView(),
                         if (tab == 0)
                           ...openedRecipe == null
@@ -233,8 +233,8 @@ extension _MiseViews on _PlanningPageState {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (cookingPage > 0) cookingActionBar(),
-          if (cookingPage == 0) ...[
+          if (cookingSession.page > 0) cookingActionBar(),
+          if (cookingSession.page == 0) ...[
             if (tab == 0 && collectionPage > 0 && openedRecipe == null)
               recipeCollectionActionBar(),
             if (!readOnlyPlanning && showPlanningAction) planningActionBar(),
@@ -1334,7 +1334,7 @@ extension _MiseViews on _PlanningPageState {
                     ),
                     icon: const Icon(Icons.restaurant_outlined, size: 18),
                     label: Text(
-                      cookedEntries.contains(
+                      cookingSession.cookedEntries.contains(
                             '${dateKey(week.add(Duration(days: day)))}:${meal.recipe.id}',
                           )
                           ? 'Gekocht ✓'

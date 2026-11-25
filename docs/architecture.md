@@ -36,7 +36,11 @@ supabase/tests/                 SQL-Prüfungen
 Jeder Funktionsbereich erhält bei Bedarf `presentation/`, `application/`,
 `domain/` und `data/`. Fachlogik bleibt unabhängig von Flutter und Supabase.
 Der App-Rahmen liegt in `app/kochmaster_app.dart`. Die Planungsoberfläche ist auf
-`planning_page.dart` und zugehörige `part`-Dateien im Planungsfeature aufgeteilt.
+[planning_page.dart](../lib/features/meal_planning/presentation/planning_page.dart)
+und zugehörige `part`-Dateien im Planungsfeature aufgeteilt. Der Kochmodus bündelt
+seinen Sitzungszustand in
+[cooking_session.dart](../lib/features/meal_planning/presentation/cooking_session.dart);
+Planung, Vorrat und Einkauf werden schrittweise weiter entkoppelt.
 
 ## Geplanter Ausbau
 

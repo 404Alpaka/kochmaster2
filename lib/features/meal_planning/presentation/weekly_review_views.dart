@@ -21,7 +21,7 @@ extension _WeeklyReviewViews on _PlanningPageState {
     if (value is String) return value;
     final meal = plan[day];
     return meal != null &&
-            cookedEntries.contains(
+            cookingSession.cookedEntries.contains(
               '${dateKey(week.add(Duration(days: day)))}:${meal.recipe.id}',
             )
         ? 'cooked'

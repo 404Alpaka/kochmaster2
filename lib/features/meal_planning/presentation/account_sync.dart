@@ -75,9 +75,9 @@ extension _AccountSync on _PlanningPageState {
       if (activeHousehold != null) await loadSharedAccountState();
       if (!mounted) return;
       draft = null;
-      cookingTicker?.cancel();
-      cookingRecipe = null;
-      cookingPage = 0;
+      cookingSession.ticker?.cancel();
+      cookingSession.recipe = null;
+      cookingSession.page = 0;
       unawaited(CookingRuntime.disableKeepScreenOn());
       localWeekCache.clear();
       plan.clear();
@@ -215,10 +215,10 @@ extension _AccountSync on _PlanningPageState {
           id!,
         );
       }
-      cookingTicker?.cancel();
-      cookingRecipe = null;
-      cookingPage = 0;
-      cookingTimers.clear();
+      cookingSession.ticker?.cancel();
+      cookingSession.recipe = null;
+      cookingSession.page = 0;
+      cookingSession.timers.clear();
       unawaited(CookingRuntime.disableKeepScreenOn());
       draft = null;
       surveyStep = 0;

@@ -5,7 +5,7 @@ extension _RecipeDiscovery on _PlanningPageState {
       tab == 0 &&
       collectionPage == 0 &&
       openedRecipe == null &&
-      cookingPage == 0;
+      cookingSession.page == 0;
   Widget recipePinnedHeader() => Container(
     padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
     color: Theme.of(context).scaffoldBackgroundColor,

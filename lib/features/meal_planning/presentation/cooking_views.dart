@@ -1,24 +1,17 @@
 part of 'planning_page.dart';
 
-class _CookingUse {
-  _CookingUse(this.item, this.used, this.unit);
-  final Map<String, dynamic> item;
-  double used;
-  final String unit;
-}
-
 extension _CookingViews on _PlanningPageState {
   Future<void> persistCookingProgress({bool clear = false}) async {
-    final snapshot = !clear && cookingRecipe != null
+    final snapshot = !clear && cookingSession.recipe != null
         ? jsonEncode(
             CookingProgress(
-              recipe: cookingRecipe!,
-              portions: cookingPortions,
-              step: cookingStep,
-              key: cookingKey,
-              date: cookingDate ?? pantryToday,
-              day: cookingDay,
-              timers: Map<int, CookingTimer>.from(cookingTimers),
+              recipe: cookingSession.recipe!,
+              portions: cookingSession.portions,
+              step: cookingSession.step,
+              key: cookingSession.key,
+              date: cookingSession.date ?? pantryToday,
+              day: cookingSession.day,
+              timers: Map<int, CookingTimer>.from(cookingSession.timers),
             ).toJson(),
           )
         : null;
@@ -65,7 +58,7 @@ extension _CookingViews on _PlanningPageState {
       }
       return;
     }
-    if (raw == null || !mounted || cookingRecipe != null) return;
+    if (raw == null || !mounted || cookingSession.recipe != null) return;
 
     late CookingProgress progress;
     try {
@@ -87,7 +80,7 @@ extension _CookingViews on _PlanningPageState {
     }
 
     try {
-      if (cookedEntries.contains(progress.key)) {
+      if (cookingSession.cookedEntries.contains(progress.key)) {
         await cookingProgressStore.remove(cookingProgressKey);
         return;
       }
@@ -104,19 +97,19 @@ extension _CookingViews on _PlanningPageState {
             entry.key: entry.value,
       };
       update(() {
-        cookingRecipe = restoredRecipe;
-        cookingPortions = progress.portions.clamp(1, 30).toInt();
-        cookingStep = progress.step
+        cookingSession.recipe = restoredRecipe;
+        cookingSession.portions = progress.portions.clamp(1, 30).toInt();
+        cookingSession.step = progress.step
             .clamp(0, (restoredRecipe.steps.length - 1).clamp(0, 100000))
             .toInt();
-        cookingDate = progress.date;
-        cookingDay = progress.day;
-        cookingKey = progress.key;
-        cookingPage = 0;
-        cookingTimers
+        cookingSession.date = progress.date;
+        cookingSession.day = progress.day;
+        cookingSession.key = progress.key;
+        cookingSession.page = 0;
+        cookingSession.timers
           ..clear()
           ..addAll(validTimers);
-        cookingUses.clear();
+        cookingSession.uses.clear();
       });
       startCookingTicker();
     } catch (_) {
@@ -129,17 +122,17 @@ extension _CookingViews on _PlanningPageState {
   }
 
   void startCookingTicker() {
-    cookingTicker?.cancel();
+    cookingSession.ticker?.cancel();
     checkCookingTimers();
-    cookingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+    cookingSession.ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       checkCookingTimers();
     });
   }
 
   void checkCookingTimers() {
-    if (!mounted || cookingRecipe == null) return;
+    if (!mounted || cookingSession.recipe == null) return;
     final ended = <int>[];
-    for (final entry in cookingTimers.entries) {
+    for (final entry in cookingSession.timers.entries) {
       if (entry.value.started &&
           entry.value.deadline != null &&
           entry.value.remaining == 0 &&
@@ -148,7 +141,7 @@ extension _CookingViews on _PlanningPageState {
         ended.add(entry.key);
       }
     }
-    if (cookingTimers.values.any((timer) => timer.running) ||
+    if (cookingSession.timers.values.any((timer) => timer.running) ||
         ended.isNotEmpty) {
       update(() {});
     }
@@ -188,33 +181,34 @@ extension _CookingViews on _PlanningPageState {
       ),
     );
     if (confirmed != true || !mounted) return;
-    cookingTicker?.cancel();
+    cookingSession.ticker?.cancel();
     update(() {
-      cookingRecipe = null;
-      cookingPage = 0;
-      cookingStep = 0;
-      cookingPortions = servings;
-      cookingDay = null;
-      cookingDate = null;
-      cookingKey = '';
-      cookingTimers.clear();
-      cookingUses.clear();
+      cookingSession.recipe = null;
+      cookingSession.page = 0;
+      cookingSession.step = 0;
+      cookingSession.portions = servings;
+      cookingSession.day = null;
+      cookingSession.date = null;
+      cookingSession.key = '';
+      cookingSession.timers.clear();
+      cookingSession.uses.clear();
     });
     await persistCookingProgress(clear: true);
     unawaited(CookingRuntime.disableKeepScreenOn());
   }
 
-  List<Widget> cookingFlow() => cookingRecipe == null
+  List<Widget> cookingFlow() => cookingSession.recipe == null
       ? []
-      : switch (cookingPage) {
+      : switch (cookingSession.page) {
           2 => cookingStepView(),
           3 => cookingFinishedView(),
           _ => cookingOverview(),
         };
   String timerLabel(int seconds) =>
       '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
-  List<IngredientAmount> get cookingIngredients =>
-      buildShoppingList([PlannedMeal(cookingRecipe!, cookingPortions)]);
+  List<IngredientAmount> get cookingIngredients => buildShoppingList([
+    PlannedMeal(cookingSession.recipe!, cookingSession.portions),
+  ]);
 
   Future<void> openCooking(
     Recipe recipe, {
@@ -231,14 +225,15 @@ extension _CookingViews on _PlanningPageState {
     }
     final date = day == null ? pantryToday : week.add(Duration(days: day));
     final key = '${dateKey(date)}:${recipe.id}';
-    if (cookingRecipe != null &&
-        cookingKey == key &&
-        !cookedEntries.contains(key)) {
-      update(() => cookingPage = cookingStep > 0 ? 2 : 1);
+    if (cookingSession.recipe != null &&
+        cookingSession.key == key &&
+        !cookingSession.cookedEntries.contains(key)) {
+      update(() => cookingSession.page = cookingSession.step > 0 ? 2 : 1);
       unawaited(CookingRuntime.enableKeepScreenOn());
       return;
     }
-    if (cookingRecipe != null && !cookedEntries.contains(cookingKey)) {
+    if (cookingSession.recipe != null &&
+        !cookingSession.cookedEntries.contains(cookingSession.key)) {
       final change = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -260,22 +255,22 @@ extension _CookingViews on _PlanningPageState {
       );
       if (change != true || !mounted) return;
     }
-    cookingTicker?.cancel();
+    cookingSession.ticker?.cancel();
     update(() {
-      cookingRecipe = recipe;
-      cookingPortions = portions;
-      cookingDay = day;
-      cookingDate = date;
-      cookingKey = key;
-      cookingPage = 1;
-      cookingStep = 0;
-      cookingTimers.clear();
-      cookingUses.clear();
-      remainingCookedPortions = (portions - servings)
+      cookingSession.recipe = recipe;
+      cookingSession.portions = portions;
+      cookingSession.day = day;
+      cookingSession.date = date;
+      cookingSession.key = key;
+      cookingSession.page = 1;
+      cookingSession.step = 0;
+      cookingSession.timers.clear();
+      cookingSession.uses.clear();
+      cookingSession.remainingCookedPortions = (portions - servings)
           .clamp(0, portions)
           .toInt();
-      cookedOn = pantryToday;
-      cookedStorage = 'Kühlschrank';
+      cookingSession.cookedOn = pantryToday;
+      cookingSession.cookedStorage = 'Kühlschrank';
     });
     unawaited(CookingRuntime.enableKeepScreenOn());
     startCookingTicker();
@@ -286,27 +281,27 @@ extension _CookingViews on _PlanningPageState {
     children: [
       IconButton(
         tooltip: 'Weniger Kochportionen',
-        onPressed: cookingPortions <= 1
+        onPressed: cookingSession.portions <= 1
             ? null
             : () {
-                update(() => cookingPortions--);
+                update(() => cookingSession.portions--);
                 unawaited(persistCookingProgress());
               },
         icon: const Icon(Icons.remove),
       ),
       Expanded(
         child: Text(
-          '$cookingPortions Portionen',
+          '${cookingSession.portions} Portionen',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
       IconButton(
         tooltip: 'Mehr Kochportionen',
-        onPressed: cookingPortions >= 30
+        onPressed: cookingSession.portions >= 30
             ? null
             : () {
-                update(() => cookingPortions++);
+                update(() => cookingSession.portions++);
                 unawaited(persistCookingProgress());
               },
         icon: const Icon(Icons.add),
@@ -315,23 +310,25 @@ extension _CookingViews on _PlanningPageState {
   );
   List<Widget> cookingOverview() => [
     proposalBack(
-      cookingDay == null ? 'Zurück zum Rezept' : 'Zurück zum Wochenplan',
-      () => update(() => cookingPage = 0),
+      cookingSession.day == null
+          ? 'Zurück zum Rezept'
+          : 'Zurück zum Wochenplan',
+      () => update(() => cookingSession.page = 0),
     ),
     gap(14),
     title('Zeit zu kochen.'),
     gap(12),
     Text(
-      '${cookingDay == null ? 'Heute' : _PlanningPageState.days[cookingDay!]} · ${displayDate(cookingDate!)}${cookingDay == null ? '' : ' · aus deinem Plan'}',
+      '${cookingSession.day == null ? 'Heute' : _PlanningPageState.days[cookingSession.day!]} · ${displayDate(cookingSession.date!)}${cookingSession.day == null ? '' : ' · aus deinem Plan'}',
       style: muted,
     ),
     gap(18),
     surveyCard(
-      cookingRecipe!.name,
-      mealDescription(cookingRecipe!, cookingPortions),
+      cookingSession.recipe!.name,
+      mealDescription(cookingSession.recipe!, cookingSession.portions),
     ),
     gap(18),
-    if (cookedEntries.contains(cookingKey)) ...[
+    if (cookingSession.cookedEntries.contains(cookingSession.key)) ...[
       surveyCard(
         '✓ Bereits als gekocht gespeichert',
         'Dieser Kochvorgang wurde abgeschlossen. Vorräte und Reste werden kein zweites Mal gebucht.',
@@ -351,7 +348,7 @@ extension _CookingViews on _PlanningPageState {
             cookingPortionControl(),
             gap(10),
             Text(
-              'Die Zutaten werden für $cookingPortions Portionen berechnet. Übrige Portionen legst du nach dem Kochen fest.',
+              'Die Zutaten werden für ${cookingSession.portions} Portionen berechnet. Übrige Portionen legst du nach dem Kochen fest.',
               style: muted,
             ),
           ],
@@ -375,23 +372,23 @@ extension _CookingViews on _PlanningPageState {
       padding: const EdgeInsets.all(16),
     ),
     gap(18),
-    for (var i = 0; i < cookingRecipe!.steps.length; i++)
+    for (var i = 0; i < cookingSession.recipe!.steps.length; i++)
       TextButton(
         style: TextButton.styleFrom(alignment: Alignment.centerLeft),
-        onPressed: cookedEntries.contains(cookingKey)
+        onPressed: cookingSession.cookedEntries.contains(cookingSession.key)
             ? null
             : () {
                 update(() {
-                  cookingStep = i;
-                  cookingPage = 2;
+                  cookingSession.step = i;
+                  cookingSession.page = 2;
                 });
                 unawaited(persistCookingProgress());
               },
         child: Text(
-          '${i + 1}  ${renderRecipeStep(cookingRecipe!, cookingRecipe!.steps[i], portions: cookingPortions)}',
+          '${i + 1}  ${renderRecipeStep(cookingSession.recipe!, cookingSession.recipe!.steps[i], portions: cookingSession.portions)}',
         ),
       ),
-    if (cookingRecipe!.steps.isEmpty)
+    if (cookingSession.recipe!.steps.isEmpty)
       Text(
         'Für dieses Gericht sind noch keine Zubereitungsschritte hinterlegt.',
         style: muted,
@@ -401,20 +398,23 @@ extension _CookingViews on _PlanningPageState {
       'Rezepttexte bleiben unverändert. Mengenangaben innerhalb eines Kochschritts beziehen sich gegebenenfalls auf die Originalportionen; maßgeblich ist deine skalierte Zutatenliste.',
       style: muted,
     ),
-    if (cookingTimers.isNotEmpty) ...[gap(14), ...cookingTimerCards()],
+    if (cookingSession.timers.isNotEmpty) ...[gap(14), ...cookingTimerCards()],
   ];
 
-  CookingTimer stepTimer(int index) => cookingTimers.putIfAbsent(index, () {
-    final match = RegExp(
-      r'(\d+)\s*(?:Minuten|Min\.|Min\b)',
-      caseSensitive: false,
-    ).firstMatch(cookingRecipe!.steps[index]);
-    return CookingTimer(
-      ((int.tryParse(match?.group(1) ?? '') ?? 5).clamp(1, 180).toInt()) * 60,
-    );
-  });
+  CookingTimer stepTimer(int index) => cookingSession.timers.putIfAbsent(
+    index,
+    () {
+      final match = RegExp(
+        r'(\d+)\s*(?:Minuten|Min\.|Min\b)',
+        caseSensitive: false,
+      ).firstMatch(cookingSession.recipe!.steps[index]);
+      return CookingTimer(
+        ((int.tryParse(match?.group(1) ?? '') ?? 5).clamp(1, 180).toInt()) * 60,
+      );
+    },
+  );
   List<Widget> cookingTimerCards() => [
-    for (final entry in cookingTimers.entries) ...[
+    for (final entry in cookingSession.timers.entries) ...[
       cookingTimerCard(entry.key, entry.value),
       gap(14),
     ],
@@ -496,14 +496,14 @@ extension _CookingViews on _PlanningPageState {
 
   List<Widget> cookingStepView() {
     final steps = renderedRecipeSteps(
-      cookingRecipe!,
-      portions: cookingPortions,
+      cookingSession.recipe!,
+      portions: cookingSession.portions,
     );
     if (steps.isEmpty) return cookingOverview();
-    final timer = stepTimer(cookingStep);
+    final timer = stepTimer(cookingSession.step);
     return [
       proposalBack('Kochübersicht', () {
-        update(() => cookingPage = 1);
+        update(() => cookingSession.page = 1);
         unawaited(persistCookingProgress());
       }),
       gap(16),
@@ -515,7 +515,7 @@ extension _CookingViews on _PlanningPageState {
                 height: 5,
                 margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: i <= cookingStep
+                  color: i <= cookingSession.step
                       ? AppColors.sage
                       : AppColors.softGreen,
                   borderRadius: BorderRadius.circular(2),
@@ -526,7 +526,7 @@ extension _CookingViews on _PlanningPageState {
       ),
       gap(18),
       Text(
-        'SCHRITT ${cookingStep + 1} VON ${steps.length}',
+        'SCHRITT ${cookingSession.step + 1} VON ${steps.length}',
         style: const TextStyle(
           color: AppColors.sage,
           fontSize: 13,
@@ -535,26 +535,26 @@ extension _CookingViews on _PlanningPageState {
       ),
       gap(18),
       title(
-        steps[cookingStep].length <= 65
-            ? steps[cookingStep]
-            : 'Schritt ${cookingStep + 1}',
+        steps[cookingSession.step].length <= 65
+            ? steps[cookingSession.step]
+            : 'Schritt ${cookingSession.step + 1}',
       ),
       gap(14),
-      if (steps[cookingStep].length > 65) ...[
+      if (steps[cookingSession.step].length > 65) ...[
         Text(
-          steps[cookingStep],
+          steps[cookingSession.step],
           style: const TextStyle(fontSize: 18, height: 1.5),
         ),
         gap(18),
       ],
-      cookingTimerCard(cookingStep, timer),
+      cookingTimerCard(cookingSession.step, timer),
       gap(18),
-      if (cookingTimers.entries.any(
-        (e) => e.key != cookingStep && e.value.started,
+      if (cookingSession.timers.entries.any(
+        (e) => e.key != cookingSession.step && e.value.started,
       )) ...[
         section('Andere Timer im Blick'),
-        for (final e in cookingTimers.entries.where(
-          (e) => e.key != cookingStep && e.value.started,
+        for (final e in cookingSession.timers.entries.where(
+          (e) => e.key != cookingSession.step && e.value.started,
         ))
           ListTile(
             title: Text(
@@ -562,22 +562,22 @@ extension _CookingViews on _PlanningPageState {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              update(() => cookingStep = e.key);
+              update(() => cookingSession.step = e.key);
               unawaited(persistCookingProgress());
             },
           ),
         gap(14),
       ],
-      if (cookingStep > 0)
+      if (cookingSession.step > 0)
         TextButton(
           onPressed: () {
-            update(() => cookingStep--);
+            update(() => cookingSession.step--);
             unawaited(persistCookingProgress());
           },
           child: const Text('Vorheriger Schritt'),
         ),
       surveyCard(
-        'Zutaten für $cookingPortions Portionen',
+        'Zutaten für ${cookingSession.portions} Portionen',
         cookingIngredients
             .map((i) => '${amountLabel(i.quantity, i.unit)} ${i.name}')
             .join('\n'),
@@ -591,7 +591,7 @@ extension _CookingViews on _PlanningPageState {
   }
 
   void prepareCookingReview() {
-    cookingUses.clear();
+    cookingSession.uses.clear();
     final ingredients = cookingIngredients;
     for (final ingredient in ingredients) {
       var needed = ingredient.quantity;
@@ -614,15 +614,15 @@ extension _CookingViews on _PlanningPageState {
             needed <= 0) {
           continue;
         }
-        _CookingUse? previous;
-        for (final use in cookingUses) {
+        CookingUse? previous;
+        for (final use in cookingSession.uses) {
           if (identical(use.item, item)) previous = use;
         }
         final available = parsed.$1 - (previous?.used ?? 0);
         final used = needed < available ? needed : available;
         if (used > 0) {
           if (previous == null) {
-            cookingUses.add(_CookingUse(item, used, parsed.$2));
+            cookingSession.uses.add(CookingUse(item, used, parsed.$2));
           } else {
             previous.used += used;
           }
@@ -631,17 +631,18 @@ extension _CookingViews on _PlanningPageState {
       }
     }
     update(() {
-      deductCookingStock = true;
-      remainingCookedPortions = (cookingPortions - servings)
-          .clamp(0, cookingPortions)
-          .toInt();
-      cookedOn = pantryToday;
-      cookingPage = 3;
+      cookingSession.deductStock = true;
+      cookingSession.remainingCookedPortions =
+          (cookingSession.portions - servings)
+              .clamp(0, cookingSession.portions)
+              .toInt();
+      cookingSession.cookedOn = pantryToday;
+      cookingSession.page = 3;
     });
     unawaited(persistCookingProgress());
   }
 
-  Future<void> editCookingUse(_CookingUse use) async {
+  Future<void> editCookingUse(CookingUse use) async {
     var value = amountLabel(use.used, '').trim();
     final form = GlobalKey<FormState>();
     final result = await showDialog<double>(
@@ -688,7 +689,7 @@ extension _CookingViews on _PlanningPageState {
 
   List<Widget> cookingFinishedView() => [
     proposalBack('Zurück zur Kochübersicht', () {
-      update(() => cookingPage = 1);
+      update(() => cookingSession.page = 1);
       unawaited(persistCookingProgress());
     }),
     gap(14),
@@ -699,7 +700,9 @@ extension _CookingViews on _PlanningPageState {
     gap(12),
     title('Gekocht. Gut genutzt.'),
     gap(12),
-    Text('${cookingRecipe!.name} · $cookingPortions Portionen'),
+    Text(
+      '${cookingSession.recipe!.name} · ${cookingSession.portions} Portionen',
+    ),
     gap(18),
     panel(
       Column(
@@ -709,15 +712,16 @@ extension _CookingViews on _PlanningPageState {
             contentPadding: EdgeInsets.zero,
             title: const Text('Verbrauchte Mengen übernehmen'),
             subtitle: const Text('Vorschläge prüfen und bei Bedarf anpassen.'),
-            value: deductCookingStock,
-            onChanged: (v) => update(() => deductCookingStock = v ?? false),
+            value: cookingSession.deductStock,
+            onChanged: (v) =>
+                update(() => cookingSession.deductStock = v ?? false),
           ),
-          if (cookingUses.isEmpty)
+          if (cookingSession.uses.isEmpty)
             Text(
               'Keine vorhandenen Vorräte eindeutig mit vergleichbaren Mengen zugeordnet. Es werden keine Mengen abgezogen.',
               style: muted,
             ),
-          for (final use in cookingUses) ...[
+          for (final use in cookingSession.uses) ...[
             Text(
               use.item['name'] as String,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -729,7 +733,7 @@ extension _CookingViews on _PlanningPageState {
               ),
             ),
             Text(
-              '${use.item['amount']} → ${amountLabel(((pantryAmount(use.item)?.$1 ?? 0) - (deductCookingStock ? use.used : 0)).clamp(0, double.infinity).toDouble(), use.unit)}',
+              '${use.item['amount']} → ${amountLabel(((pantryAmount(use.item)?.$1 ?? 0) - (cookingSession.deductStock ? use.used : 0)).clamp(0, double.infinity).toDouble(), use.unit)}',
               style: muted,
             ),
             gap(12),
@@ -751,14 +755,15 @@ extension _CookingViews on _PlanningPageState {
           Row(
             children: [
               IconButton(
-                onPressed: remainingCookedPortions > 0
-                    ? () => update(() => remainingCookedPortions--)
+                onPressed: cookingSession.remainingCookedPortions > 0
+                    ? () =>
+                          update(() => cookingSession.remainingCookedPortions--)
                     : null,
                 icon: const Icon(Icons.remove),
               ),
               Expanded(
                 child: Text(
-                  '$remainingCookedPortions Portionen',
+                  '${cookingSession.remainingCookedPortions} Portionen',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 20,
@@ -767,8 +772,11 @@ extension _CookingViews on _PlanningPageState {
                 ),
               ),
               IconButton(
-                onPressed: remainingCookedPortions < cookingPortions
-                    ? () => update(() => remainingCookedPortions++)
+                onPressed:
+                    cookingSession.remainingCookedPortions <
+                        cookingSession.portions
+                    ? () =>
+                          update(() => cookingSession.remainingCookedPortions++)
                     : null,
                 icon: const Icon(Icons.add),
               ),
@@ -776,28 +784,31 @@ extension _CookingViews on _PlanningPageState {
           ),
           gap(12),
           DropdownButtonFormField<String>(
-            initialValue: cookedStorage,
+            initialValue: cookingSession.cookedStorage,
             decoration: const InputDecoration(labelText: 'Aufbewahrung'),
             items: [
               for (final place in ['Kühlschrank', 'Gefrierfach'])
                 DropdownMenuItem(value: place, child: Text(place)),
             ],
             onChanged: (v) {
-              if (v != null) update(() => cookedStorage = v);
+              if (v != null) update(() => cookingSession.cookedStorage = v);
             },
           ),
           gap(12),
           TextButton.icon(
             icon: const Icon(Icons.event_outlined),
-            label: Text('Gekocht am: ${displayDate(cookedOn ?? pantryToday)}'),
+            label: Text(
+              'Gekocht am: ${displayDate(cookingSession.cookedOn ?? pantryToday)}',
+            ),
             onPressed: () async {
               final date = await showDatePicker(
                 context: context,
-                initialDate: cookedOn ?? pantryToday,
+                initialDate: cookingSession.cookedOn ?? pantryToday,
                 firstDate: DateTime(2000),
                 lastDate: pantryToday,
               );
-              if (date != null && mounted) update(() => cookedOn = date);
+              if (date != null && mounted)
+                update(() => cookingSession.cookedOn = date);
             },
           ),
         ],
@@ -816,9 +827,9 @@ extension _CookingViews on _PlanningPageState {
       offlineEditMessage();
       return;
     }
-    if (cookedEntries.contains(cookingKey)) return;
-    if (deductCookingStock &&
-        cookingUses.any(
+    if (cookingSession.cookedEntries.contains(cookingSession.key)) return;
+    if (cookingSession.deductStock &&
+        cookingSession.uses.any(
           (use) =>
               !pantry.contains(use.item) ||
               pantryAmount(use.item)?.$2.toLowerCase() !=
@@ -835,8 +846,8 @@ extension _CookingViews on _PlanningPageState {
       return;
     }
     update(() {
-      if (deductCookingStock) {
-        for (final use in cookingUses) {
+      if (cookingSession.deductStock) {
+        for (final use in cookingSession.uses) {
           final remaining = pantryAmount(use.item)!.$1 - use.used;
           if (remaining <= 0) {
             pantry.remove(use.item);
@@ -845,50 +856,52 @@ extension _CookingViews on _PlanningPageState {
           }
         }
       }
-      if (remainingCookedPortions > 0) {
+      if (cookingSession.remainingCookedPortions > 0) {
         preparedMeals.add({
           'id': 'cooked-${DateTime.now().microsecondsSinceEpoch}',
-          'name': cookingRecipe!.name,
-          'portions': remainingCookedPortions,
-          'location': cookedStorage,
+          'name': cookingSession.recipe!.name,
+          'portions': cookingSession.remainingCookedPortions,
+          'location': cookingSession.cookedStorage,
           'storedOn': dateKey(pantryToday),
-          'cookedOn': dateKey(cookedOn ?? pantryToday),
-          'recipe': recipeSnapshot(cookingRecipe!),
+          'cookedOn': dateKey(cookingSession.cookedOn ?? pantryToday),
+          'recipe': recipeSnapshot(cookingSession.recipe!),
         });
       }
       cookingHistory.add({
-        'key': cookingKey,
-        'date': dateKey(cookedOn ?? pantryToday),
-        'recipeId': cookingRecipe!.id,
-        'name': cookingRecipe!.name,
-        'portions': cookingPortions,
-        'savedLeftovers': remainingCookedPortions,
+        'key': cookingSession.key,
+        'date': dateKey(cookingSession.cookedOn ?? pantryToday),
+        'recipeId': cookingSession.recipe!.id,
+        'name': cookingSession.recipe!.name,
+        'portions': cookingSession.portions,
+        'savedLeftovers': cookingSession.remainingCookedPortions,
       });
-      cookedEntries.add(cookingKey);
-      cookingPage = 0;
+      cookingSession.cookedEntries.add(cookingSession.key);
+      cookingSession.page = 0;
     });
-    cookingTicker?.cancel();
-    cookingTimers.clear();
+    cookingSession.ticker?.cancel();
+    cookingSession.timers.clear();
     savePreferences();
     unawaited(persistCookingProgress(clear: true));
     unawaited(CookingRuntime.disableKeepScreenOn());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Als gekocht gespeichert · $remainingCookedPortions Portionen aufgehoben.',
+          'Als gekocht gespeichert · ${cookingSession.remainingCookedPortions} Portionen aufgehoben.',
         ),
       ),
     );
   }
 
   Widget cookingActionBar() {
-    final alreadyCooked = cookedEntries.contains(cookingKey);
-    final label = cookingPage == 1
+    final alreadyCooked = cookingSession.cookedEntries.contains(
+      cookingSession.key,
+    );
+    final label = cookingSession.page == 1
         ? 'Kochen starten'
-        : cookingPage == 3
+        : cookingSession.page == 3
         ? 'Gekocht speichern'
-        : cookingStep + 1 < cookingRecipe!.steps.length
-        ? 'Weiter: Schritt ${cookingStep + 2}'
+        : cookingSession.step + 1 < cookingSession.recipe!.steps.length
+        ? 'Weiter: Schritt ${cookingSession.step + 2}'
         : 'Zubereitung abschließen';
     return Center(
       child: ConstrainedBox(
@@ -903,21 +916,22 @@ extension _CookingViews on _PlanningPageState {
                 child: FilledButton(
                   onPressed:
                       alreadyCooked ||
-                          (cloudOffline && cookingPage == 3) ||
-                          (cookingPage == 1 && cookingRecipe!.steps.isEmpty)
+                          (cloudOffline && cookingSession.page == 3) ||
+                          (cookingSession.page == 1 &&
+                              cookingSession.recipe!.steps.isEmpty)
                       ? null
                       : () {
-                          if (cookingPage == 1) {
+                          if (cookingSession.page == 1) {
                             update(() {
-                              cookingStep = 0;
-                              cookingPage = 2;
+                              cookingSession.step = 0;
+                              cookingSession.page = 2;
                             });
                             unawaited(persistCookingProgress());
-                          } else if (cookingPage == 3) {
+                          } else if (cookingSession.page == 3) {
                             saveCookingResult();
-                          } else if (cookingStep + 1 <
-                              cookingRecipe!.steps.length) {
-                            update(() => cookingStep++);
+                          } else if (cookingSession.step + 1 <
+                              cookingSession.recipe!.steps.length) {
+                            update(() => cookingSession.step++);
                             unawaited(persistCookingProgress());
                           } else {
                             prepareCookingReview();
@@ -927,7 +941,7 @@ extension _CookingViews on _PlanningPageState {
                   child: Text(
                     alreadyCooked
                         ? 'Bereits gekocht ✓'
-                        : cloudOffline && cookingPage == 3
+                        : cloudOffline && cookingSession.page == 3
                         ? 'Zum Speichern verbinden'
                         : label,
                     textAlign: TextAlign.center,
@@ -943,9 +957,9 @@ extension _CookingViews on _PlanningPageState {
               ],
               gap(8),
               Text(
-                cookingPage == 3
+                cookingSession.page == 3
                     ? 'Erst jetzt werden Vorräte und Reste aktualisiert.'
-                    : 'Zutaten für $cookingPortions Portionen · Timer laufen beim Schrittwechsel weiter.',
+                    : 'Zutaten für ${cookingSession.portions} Portionen · Timer laufen beim Schrittwechsel weiter.',
                 textAlign: TextAlign.center,
                 style: muted.copyWith(fontSize: 12),
               ),

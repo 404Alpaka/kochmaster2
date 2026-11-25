@@ -42,6 +42,10 @@ class AccountDataRepository {
 
 const sharedAccountKeys = {
   'pantry',
+  'pantryShoppingItems',
+  'shoppingCategories',
+  'shoppingPackageSizes',
+  'shoppingTransfers',
   'householdDinerRules',
   'recipeCostEstimates',
   'budgetCostClass',

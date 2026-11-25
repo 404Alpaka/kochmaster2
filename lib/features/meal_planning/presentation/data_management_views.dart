@@ -118,7 +118,7 @@ extension _DataManagementViews on _PlanningPageState {
       await action();
     } catch (error) {
       dataMessage(dataActionFailure(error));
-      if (mounted && cookingRecipe != null) startCookingTicker();
+      if (mounted && cookingSession.recipe != null) startCookingTicker();
     } finally {
       if (mounted) update(() => dataActionBusy = false);
     }
@@ -138,7 +138,7 @@ extension _DataManagementViews on _PlanningPageState {
 
   Future<void> removeLocalAccountCopies() async {
     // Let earlier cooking writes finish before removing every scope's copy.
-    cookingTicker?.cancel();
+    cookingSession.ticker?.cancel();
     await cookingProgressWrite;
     final prefix = 'kochmaster-cooking-progress-${widget.user?.id ?? 'guest'}-';
     final keys = (await cookingProgressStore.getKeys())
@@ -158,10 +158,10 @@ extension _DataManagementViews on _PlanningPageState {
       localWeekCache.clear();
       plan.clear();
       checked.clear();
-      cookingRecipe = null;
-      cookingPage = 0;
-      cookingTimers.clear();
-      cookingUses.clear();
+      cookingSession.recipe = null;
+      cookingSession.page = 0;
+      cookingSession.timers.clear();
+      cookingSession.uses.clear();
       openedRecipe = null;
       draft = null;
       activeHouseholdId = null;

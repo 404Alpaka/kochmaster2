@@ -34,6 +34,7 @@ import '../domain/planning_resources.dart';
 import '../../shopping/domain/shopping_pantry.dart';
 import '../domain/cooking_timer.dart';
 import '../domain/cooking_progress.dart';
+import 'cooking_session.dart';
 import '../../../core/cooking_runtime.dart';
 import '../domain/planning_diner.dart';
 import 'household_diners_page.dart';
@@ -48,6 +49,7 @@ import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, PlatformException;
 
 import '../../shopping/domain/build_shopping_list.dart';
+import '../../shopping/domain/shopping_categories.dart';
 import '../domain/pantry_recipe_matcher.dart';
 
 part 'mise_views.dart';
@@ -129,25 +131,11 @@ class _PlanningPageState extends State<PlanningPage> {
     'Samstag',
     'Sonntag',
   ];
-  int cookingPage = 0;
-  Recipe? cookingRecipe;
-  int cookingPortions = 2;
-  int cookingStep = 0;
-  int? cookingDay;
-  DateTime? cookingDate;
-  String cookingKey = '';
-  Timer? cookingTicker;
-  final cookingTimers = <int, CookingTimer>{};
+  final cookingSession = CookingSession();
   SharedPreferencesAsync? _cookingProgressStore;
   SharedPreferencesAsync get cookingProgressStore =>
       _cookingProgressStore ??= SharedPreferencesAsync();
   Future<void> cookingProgressWrite = Future<void>.value();
-  final cookingUses = <_CookingUse>[];
-  bool deductCookingStock = true;
-  int remainingCookedPortions = 0;
-  String cookedStorage = 'Kühlschrank';
-  DateTime? cookedOn;
-  final cookedEntries = <String>{};
   final preparedMeals = <Map<String, dynamic>>[];
   int tab = 5;
   int shoppingPage = 0;
@@ -258,6 +246,9 @@ class _PlanningPageState extends State<PlanningPage> {
   int pantrySuggestionFilter = 0;
   int pantrySuggestionMaxMinutes = 0;
   final pantryShoppingItems = <IngredientAmount>[];
+  final shoppingCategories = <String, String>{};
+  final shoppingPackageSizes = <String, double>{};
+  final shoppingTransfers = <String>{};
   List<Map<String, dynamic>> receiptDraft = [];
   bool receiptResolved = false;
   bool receiptIsDemo = true;
@@ -357,9 +348,12 @@ class _PlanningPageState extends State<PlanningPage> {
           },
         )
         .toList(),
+    'shoppingCategories': shoppingCategories,
+    'shoppingPackageSizes': shoppingPackageSizes,
+    'shoppingTransfers': shoppingTransfers.toList(),
     'importedReceiptIds': importedReceiptIds.toList(),
     'personalRecipes': personalRecipes,
-    'cookedEntries': cookedEntries.toList(),
+    'cookedEntries': cookingSession.cookedEntries.toList(),
     'preparedMeals': preparedMeals,
     'survey': {
       'completed': surveyCompleted,
@@ -455,10 +449,13 @@ class _PlanningPageState extends State<PlanningPage> {
     personalExclusions.clear();
     personalDislikes.clear();
     exclusions.clear();
-    cookedEntries.clear();
+    cookingSession.cookedEntries.clear();
     preparedMeals.clear();
     personalRecipes.clear();
     pantryShoppingItems.clear();
+    shoppingCategories.clear();
+    shoppingPackageSizes.clear();
+    shoppingTransfers.clear();
 
     rememberedRecipes.addAll(
       List<String>.from(data['rememberedRecipes'] as List? ?? []),
@@ -517,7 +514,7 @@ class _PlanningPageState extends State<PlanningPage> {
     planningDays = (survey['days'] as int? ?? 7).clamp(1, 7);
     maxMinutes = survey['minutes'] as int? ?? 30;
     startDay = (survey['startDay'] as int? ?? 0).clamp(0, 6);
-    cookedEntries.addAll(
+    cookingSession.cookedEntries.addAll(
       List<String>.from(data['cookedEntries'] as List? ?? []),
     );
     preparedMeals.addAll(
@@ -549,11 +546,24 @@ class _PlanningPageState extends State<PlanningPage> {
           );
         }),
       );
+    shoppingCategories.addAll(
+      (data['shoppingCategories'] as Map? ?? {}).map(
+        (key, value) => MapEntry(key as String, value as String),
+      ),
+    );
+    shoppingPackageSizes.addAll(
+      (data['shoppingPackageSizes'] as Map? ?? {}).map(
+        (key, value) => MapEntry(key as String, (value as num).toDouble()),
+      ),
+    );
+    shoppingTransfers.addAll(
+      List<String>.from(data['shoppingTransfers'] as List? ?? []),
+    );
   }
 
   @override
   void dispose() {
-    cookingTicker?.cancel();
+    cookingSession.ticker?.cancel();
     unawaited(CookingRuntime.disableKeepScreenOn());
     searchController.dispose();
     super.dispose();
@@ -975,12 +985,12 @@ class _PlanningPageState extends State<PlanningPage> {
         !dataActionBusy &&
         !preparedBusy &&
         tab == 5 &&
-        cookingPage == 0 &&
+        cookingSession.page == 0 &&
         openedRecipe == null,
     onPopInvokedWithResult: (didPop, _) {
       if (didPop) return;
       if (dataActionBusy || preparedBusy) return;
-      if (cookingPage > 0) {
+      if (cookingSession.page > 0) {
         // Leaving the cooking view keeps its persisted progress available.
         selectTab(5);
       } else if (openedRecipe != null) {

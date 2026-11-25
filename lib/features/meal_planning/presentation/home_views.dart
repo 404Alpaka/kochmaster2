@@ -114,8 +114,9 @@ extension _HomeViews on _PlanningPageState {
 
   Future<void> openTodayCooking() async {
     if (loading || saving) return;
-    if (cookingRecipe != null && !cookedEntries.contains(cookingKey)) {
-      update(() => cookingPage = cookingStep > 0 ? 2 : 1);
+    if (cookingSession.recipe != null &&
+        !cookingSession.cookedEntries.contains(cookingSession.key)) {
+      update(() => cookingSession.page = cookingSession.step > 0 ? 2 : 1);
       unawaited(CookingRuntime.enableKeepScreenOn());
       return;
     }
@@ -137,7 +138,9 @@ extension _HomeViews on _PlanningPageState {
     if (loadError != null) return;
     final meal = plan[today.weekday - 1];
     if (meal == null) return;
-    if (cookedEntries.contains('${dateKey(today)}:${meal.recipe.id}') ||
+    if (cookingSession.cookedEntries.contains(
+          '${dateKey(today)}:${meal.recipe.id}',
+        ) ||
         meal.preparedConsumed) {
       details(meal.recipe);
     } else if (meal.preparedMealId != null) {
@@ -218,11 +221,13 @@ extension _HomeViews on _PlanningPageState {
       homePlanCard(),
       gap(12),
       homeCookingCard(
-        cookingRecipe != null && !cookedEntries.contains(cookingKey)
-            ? cookingRecipe
+        cookingSession.recipe != null &&
+                !cookingSession.cookedEntries.contains(cookingSession.key)
+            ? cookingSession.recipe
             : todayMeal?.recipe,
-        cookingRecipe != null && !cookedEntries.contains(cookingKey)
-            ? 'Schritt ${cookingStep + 1} von ${cookingRecipe!.steps.length} · ${cookingRecipe!.name}'
+        cookingSession.recipe != null &&
+                !cookingSession.cookedEntries.contains(cookingSession.key)
+            ? 'Schritt ${cookingSession.step + 1} von ${cookingSession.recipe!.steps.length} · ${cookingSession.recipe!.name}'
             : todayMeal?.recipe.name ??
                   (dateKey(week) == dateKey(mondayOf(today))
                       ? 'Heute noch nichts geplant'
@@ -425,7 +430,10 @@ extension _HomeViews on _PlanningPageState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    cookingRecipe != null && !cookedEntries.contains(cookingKey)
+                    cookingSession.recipe != null &&
+                            !cookingSession.cookedEntries.contains(
+                              cookingSession.key,
+                            )
                         ? 'Kochvorgang fortsetzen'
                         : 'Kochen starten',
                     style: const TextStyle(

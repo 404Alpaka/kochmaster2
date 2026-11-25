@@ -659,7 +659,7 @@ extension _PlanningSurvey on _PlanningPageState {
 
   List<PlanningOccurrence> get plannerHistory {
     final result = <PlanningOccurrence>[];
-    for (final key in cookedEntries) {
+    for (final key in cookingSession.cookedEntries) {
       if (key.length > 11 && key[10] == ':') {
         final date = DateTime.tryParse(key.substring(0, 10));
         if (date != null) {

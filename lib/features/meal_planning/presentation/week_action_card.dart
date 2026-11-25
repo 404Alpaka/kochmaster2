@@ -9,7 +9,9 @@ extension _WeekActionCard on _PlanningPageState {
         meal != null &&
         (meal.preparedMealId != null
             ? meal.preparedConsumed
-            : cookedEntries.contains('${dateKey(date)}:${meal.recipe.id}'));
+            : cookingSession.cookedEntries.contains(
+                '${dateKey(date)}:${meal.recipe.id}',
+              ));
     final blocked =
         loading ||
         saving ||
@@ -106,13 +108,17 @@ extension _WeekActionCard on _PlanningPageState {
                   ),
                 ),
               gap(20),
-            if (loadError != null && plan.isEmpty) ...[
-              const Text(
-                'Der gespeicherte Plan konnte nicht geladen werden. Du kannst einen Vorschlag vorbereiten; zum Speichern muss der Ladefehler zuerst behoben werden.',
-                style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
-              ),
-              gap(14),
-            ],
+              if (loadError != null && plan.isEmpty) ...[
+                const Text(
+                  'Der gespeicherte Plan konnte nicht geladen werden. Du kannst einen Vorschlag vorbereiten; zum Speichern muss der Ladefehler zuerst behoben werden.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                gap(14),
+              ],
               Row(
                 children: [
                   Icon(

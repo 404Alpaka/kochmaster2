@@ -15,7 +15,7 @@ extension _RecipeCollectionViews on _PlanningPageState {
   }
 
   bool recipeWasCooked(String id) =>
-      cookedEntries.any((key) => key.endsWith(':$id'));
+      cookingSession.cookedEntries.any((key) => key.endsWith(':$id'));
   List<Recipe> get collectedRecipes {
     final pool = <String, Recipe>{
       for (final m in plan.values)
